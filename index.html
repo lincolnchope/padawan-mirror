@@ -625,14 +625,15 @@
   #sc-wx-err { font-size: .85rem; color: #fca5a5; }
 
   /* ============ HOME: expanded window ============
-     Swipe up, drag up, wheel up or press the up arrow and the orb parks in the top-right
+     Swipe up, drag up or press the up arrow and the orb parks in the top-right
      corner, small, while a window opens in the space it left. The reverse puts it back.
      The geometry is driven by layoutHome() in the JS, which owns the orb's position on
      home — this is only the pre-JS default and the window chrome. */
   #hw-window {
     position: absolute; left: 50%; top: 46vh;
     transform: translate(-50%, -50%) scale(.94);
-    width: min(84vw, 1180px); height: min(56vh, 560px);
+    /* Same box as #sp-player and #sc-window; layoutHome() sets the live px values. */
+    width: min(94vw, 1600px); height: min(88vh, 940px);
     background: rgba(8,20,13,.86);
     border: 1px solid rgba(110,231,183,.28);
     border-radius: 24px;
@@ -699,9 +700,128 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #hw-page-body {
     flex: 1 1 auto; min-height: 0; overflow-y: auto;
+    display: block;
+  }
+  /* a page with no implementation registered: centre the one-line note */
+  #hw-page-body.plain {
     display: flex; align-items: center; justify-content: center;
     color: var(--muted); font-size: 1.2rem; letter-spacing: 1px;
   }
+
+  /* ---------- shared page building blocks ----------
+     Every app page inside the window uses these, so the 15 pages look like one app.
+     Deliberately big type and big tap targets, matching the rest of the mirror. */
+  .pg-wrap { display: flex; flex-direction: column; gap: 12px; }
+  .pg-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 16px; border-radius: 14px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border);
+  }
+  .pg-row.done { opacity: .45; }
+  .pg-row.now { border-color: rgba(110,231,183,.7); background: rgba(110,231,183,.12); }
+  .pg-main { flex: 1 1 auto; min-width: 0; }
+  .pg-title { font-size: 1.2rem; font-weight: 600; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pg-sub { font-size: .88rem; color: var(--muted); margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pg-side { flex: 0 0 auto; font-size: 1rem; color: var(--accent);
+    font-variant-numeric: tabular-nums; text-align: right; }
+  .pg-big { font-size: 2rem; font-weight: 700; color: var(--text);
+    font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .pg-btn {
+    flex: 0 0 auto; height: 44px; padding: 0 16px; border-radius: 22px;
+    background: rgba(110,231,183,.16); border: 1px solid rgba(110,231,183,.42);
+    color: var(--accent); font-size: .95rem; font-weight: 700; cursor: pointer;
+  }
+  .pg-btn:hover { background: rgba(110,231,183,.34); }
+  .pg-btn.warn { background: rgba(255,83,112,.14); border-color: rgba(255,83,112,.42); color: #ff9aae; }
+  .pg-btn.warn:hover { background: rgba(255,83,112,.28); }
+  .pg-btn:disabled { opacity: .4; cursor: default; }
+  .pg-input {
+    flex: 1 1 auto; min-width: 0; font-family: inherit; font-size: 1.1rem;
+    color: var(--text); background: rgba(255,255,255,.06);
+    border: 1px solid var(--card-border); border-radius: 12px;
+    padding: 12px 15px; outline: none;
+  }
+  .pg-input::placeholder { color: var(--muted); }
+  .pg-input:focus { border-color: rgba(110,231,183,.55); }
+  .pg-addbar { display: flex; gap: 10px; flex: 0 0 auto; }
+  .pg-muted { color: var(--muted); font-size: 1.05rem; }
+  .pg-empty { color: var(--muted); font-size: 1.1rem; text-align: center; padding: 34px 0; }
+  .pg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pg-chip {
+    padding: 8px 14px; border-radius: 18px; cursor: pointer;
+    background: rgba(255,255,255,.05); border: 1px solid var(--card-border);
+    color: var(--muted); font-size: .95rem; font-weight: 700;
+  }
+  .pg-chip.on { background: rgba(110,231,183,.26); border-color: rgba(110,231,183,.6); color: var(--accent); }
+  .pg-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .pg-card {
+    padding: 16px 18px; border-radius: 16px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border);
+  }
+  .pg-card h3 { margin: 0 0 10px; font-size: .92rem; font-weight: 700; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--muted); }
+  .pg-stat { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 0; }
+  .pg-stat .k { font-size: 1rem; color: var(--muted); }
+  .pg-stat .v { font-size: 1.15rem; font-weight: 700; color: var(--text);
+    font-variant-numeric: tabular-nums; }
+  .pg-bar { height: 12px; border-radius: 6px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: 8px; }
+  .pg-bar i { display: block; height: 100%; background: var(--accent); }
+  /* kanban columns */
+  .pg-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: start; }
+  .pg-col { background: rgba(255,255,255,.03); border: 1px solid var(--card-border);
+    border-radius: 14px; padding: 12px; min-height: 120px; }
+  .pg-col-h { display: flex; align-items: baseline; justify-content: space-between;
+    font-size: .95rem; font-weight: 700; letter-spacing: 1px; color: var(--accent); margin-bottom: 10px; }
+  .pg-col-h .n { color: var(--muted); font-weight: 500; }
+  .pg-tcard { padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; cursor: grab;
+    background: rgba(255,255,255,.05); border: 1px solid var(--card-border);
+    font-size: .98rem; color: var(--text); }
+  .pg-tcard:hover { border-color: rgba(110,231,183,.5); }
+  .pg-col.drop-hover { border-color: rgba(110,231,183,.7); background: rgba(110,231,183,.1); }
+  /* week strip (countdown / school) */
+  .pg-wk { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .pg-wkd { text-align: center; padding: 8px 4px; border-radius: 10px;
+    background: rgba(255,255,255,.03); border: 1px solid var(--card-border); }
+  .pg-wkd.today { border-color: rgba(110,231,183,.7); background: rgba(110,231,183,.12); }
+  .pg-wkd .n { display: block; font-size: .78rem; color: var(--muted); text-transform: uppercase; }
+  .pg-wkd .d { display: block; font-size: 1.25rem; font-weight: 700; color: var(--text); }
+  .pg-wkd .c { display: block; font-size: .68rem; color: var(--accent); margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* news list */
+  .pg-news { display: flex; flex-direction: column; gap: 10px; }
+  .pg-nitem { display: block; padding: 13px 16px; border-radius: 14px; text-decoration: none;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border); }
+  .pg-nitem:hover { background: rgba(110,231,183,.12); border-color: rgba(110,231,183,.5); }
+  .pg-nitem .t { font-size: 1.12rem; font-weight: 600; color: var(--text); line-height: 1.3; }
+  .pg-nitem .s { font-size: .82rem; color: var(--accent); margin-top: 5px; letter-spacing: .5px; }
+  /* habits */
+  .pg-hab { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .pg-hcard { padding: 16px; border-radius: 16px; text-align: center; cursor: pointer;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border); }
+  .pg-hcard:hover { border-color: rgba(110,231,183,.5); }
+  .pg-hcard.done { background: rgba(110,231,183,.14); border-color: rgba(110,231,183,.55); }
+  .pg-hcard .nm { font-size: 1.15rem; font-weight: 600; color: var(--text); }
+  .pg-hcard.done .nm { color: var(--accent); }
+  .pg-hcard .st { font-size: 2rem; font-weight: 800; color: var(--muted); line-height: 1.15; margin-top: 6px; }
+  .pg-hcard .lb { font-size: .72rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  /* whiteboard */
+  .pg-wb-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .pg-sw { width: 40px; height: 40px; border-radius: 10px; border: 2px solid var(--card-border); cursor: pointer; }
+  .pg-sw.on { border-color: var(--accent); }
+  .pg-wb-canvas { touch-action: none; cursor: crosshair; border-radius: 14px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border); display: block; }
+  /* weather (the page reuses the schedule window's look) */
+  .pg-wx-now { display: flex; align-items: center; gap: 18px; }
+  .pg-wx-temp { font-size: 3.6rem; font-weight: 700; line-height: 1; }
+  .pg-wx-temp small { font-size: 1.5rem; color: var(--muted); }
+  .pg-wxd { display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border); border-radius: 12px; }
+  .pg-wxd .d { flex: 0 0 60px; font-size: .85rem; font-weight: 700; color: var(--accent); text-transform: uppercase; }
+  .pg-wxd .c { flex: 1 1 auto; font-size: .9rem; color: var(--muted); }
+  .pg-wxd .t { flex: 0 0 auto; font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pg-wxd .t .lo { color: var(--muted); font-weight: 500; }
 
   /* on a hub that is not home the window has nothing to show */
   body:not(.home) #hw-window { display: none; }
@@ -888,7 +1008,7 @@
       <div id="orb-label">READY</div>
     </div>
 
-    <!-- Swipe up / drag up / wheel up / ArrowUp: the orb parks top-right and this window
+    <!-- Swipe up / drag up / ArrowUp: the orb parks top-right and this window
          opens in the space it left. It shows the apps grid; picking one opens a blank
          page for it, ready to be built. -->
     <div id="hw-window" class="anim">
@@ -2641,16 +2761,16 @@
         glow.style.height = Math.round(size * 1.38) + 'px';
       }
       if (winEl) {
-        // The window is CENTRED on the viewport axis (same as the clock and pill above it)
-        // and centred vertically in the space below the orb. It is capped short of the
-        // full band so the centring is visible as an even gap above and below, rather
-        // than the window hugging the top with all the slack at the bottom.
+        // SIZED LIKE THE OTHER WINDOWS. The Spotify player and the schedule window are
+        // both min(94vw, 1600px) x min(88vh, 940px); the apps window uses the same box so
+        // switching between them never feels like a different screen. It still cannot
+        // start until the parked orb has cleared, so the band is the real limit here and
+        // the cap below only bites when there is room to spare.
         const bandTop = Math.max(g.pillBottom + 14, cy + size / 2 + 20);
         const bandBot = g.vh - 24;
         const bandH = Math.max(240, bandBot - bandTop);
-        const winH = Math.min(bandH, 660);                 // capped so the gap is even
-        const orbColumn = rightMargin + size;              // width the corner orb occupies
-        const winW = Math.min(g.vw * 0.86, g.vw - orbColumn - 40);
+        const winH = Math.min(bandH, g.vh * 0.88, 940);
+        const winW = Math.min(g.vw * 0.94, 1600);
         winEl.style.left = Math.round(g.vw / 2) + 'px';    // centred on the viewport
         winEl.style.top = Math.round(bandTop + bandH / 2) + 'px';
         winEl.style.width = Math.round(winW) + 'px';
@@ -2683,7 +2803,7 @@
   window.layoutHome = layoutHome;
 
   // ================= home: expand / collapse =================
-  // Swipe up, drag up, wheel up or press ArrowUp: the orb parks in the top-right corner
+  // Swipe up, drag up or press ArrowUp: the orb parks in the top-right corner
   // and a window opens in the space it left. The reverse gesture puts it back.
   //
   // The window is intentionally empty for now — it is the container the next screens get
@@ -2704,11 +2824,9 @@
   // ================= window: apps grid =================
   // The window's default view. The app list is carried over from the previous mirror
   // (and the v1 PAGE_NOTES one-liners), grouped the way that mirror grouped its rings:
-  // Life, Work, Tools. Every page is intentionally BLANK for now — picking one opens an
-  // empty page with its title and a way back, so each can be filled in next.
+  // Life, Work, Tools.
   const HW_APPS = [
     { group: 'Life', apps: [
-      { id: 'schedule',  name: 'Schedule',  note: 'Today and this week from your Google Calendar' },
       { id: 'kanban',    name: 'To Do',     note: 'Google Tasks in priority columns' },
       { id: 'meds',      name: 'Medications', note: 'Medication list with editable counts' },
       { id: 'money',     name: 'Money',     note: 'Net worth, goals, subscriptions and the ledger' },
@@ -2721,14 +2839,2616 @@
       { id: 'referee',   name: 'Referee',   note: 'Coaching, reffing, supervising and the rules model' },
     ]},
     { group: 'Tools', apps: [
-      { id: 'weather',   name: 'Weather',   note: 'Seven-day forecast for Sherbrooke' },
       { id: 'news',      name: 'News',      note: 'Headlines, refreshed every ten minutes' },
-      { id: 'music',     name: 'Music',     note: 'Spotify transport controls' },
       { id: 'timer',     name: 'Timer',     note: 'Countdown and stopwatch with presets' },
       { id: 'countdown', name: 'Countdown', note: 'Days until the next SAC, exam or appointment' },
       { id: 'whiteboard', name: 'Whiteboard', note: 'Draw on the mirror and save a PNG' },
     ]},
   ];
+
+  // ---------------------------------------------------------------- page framework
+  // Each app page is one entry in HW_PAGE: a render function that fills #hw-page-body
+  // and may register a teardown (for timers/intervals) that runs when you leave the page.
+  //
+  //   HW_PAGE['meds'] = function (host) { host.innerHTML = '...'; return function(){...}; }
+  //
+  // A page is a plain DOM builder: no routing, no window chrome — the shell around it
+  // already provides the title bar, the Apps button and the scrolling body.
+  const HW_PAGE = {};
+  const HW_TEARDOWN = {};        // id -> fn(), called when leaving the page
+  let hwCurrentApp = null;
+
+  // Shared helpers so every page formats and fetches the same way.
+  const hwJ = (u) => fetch(u).then(r => r.json());
+  const hwMoney = (n) => '$' + (Math.round(Number(n || 0) * 100) / 100)
+    .toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const hwEsc = (s) => String(s == null ? '' : s);
+  // strip the emoji the mirror avoids, and the [P0]-style tags the task titles carry
+  const hwClean = (s) => String(s == null ? '' : s)
+    .replace(/\[P\d+\]\s*/g, '')
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{23F0}-\u{23FF}\u{2B00}-\u{2BFF}]/gu, '');
+  // el() helper for building nodes tersely inside a page
+  function hwEl(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  const hwLS = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+
+  // ====== APP PAGES (generated) ======
+
+  // ---- kanban ----
+  // ---- kanban (To Do) ----
+  HW_PAGE['kanban'] = function (host) {
+    var PGK_BASE = 'http://localhost:2008/api';
+    var PGK_COLS = 4;
+
+    host.innerHTML = '';
+
+    var wrap = hwEl('div', 'pg-wrap');
+
+    var bar = hwEl('div', 'pg-addbar');
+    var inp = hwEl('input', 'pg-input');
+    inp.type = 'text';
+    inp.placeholder = 'Add a task...';
+    var btn = hwEl('button', 'pg-btn', '+');
+    bar.appendChild(inp);
+    bar.appendChild(btn);
+    wrap.appendChild(bar);
+
+    var boardHost = hwEl('div');
+    wrap.appendChild(boardHost);
+
+    host.appendChild(wrap);
+
+    var pgkDragId = null;
+    var pgkSuppressClick = false;
+    var pgkAlive = true;
+
+    function pgkPost(path, body) {
+      return fetch(PGK_BASE + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(function (r) { return r.json(); });
+    }
+
+    function pgkIsArray(x) {
+      return Object.prototype.toString.call(x) === '[object Array]';
+    }
+
+    // [P0]..[P9] tag -> 0-9, no tag -> 9
+    function pgkPrio(title) {
+      var m = String(title === undefined || title === null ? '' : title).match(/\[P(\d+)\]/i);
+      if (m) {
+        var n = parseInt(m[1], 10);
+        if (!isNaN(n) && n >= 0 && n <= 9) { return n; }
+      }
+      return 9;
+    }
+
+    function pgkBoardFail() {
+      boardHost.innerHTML = '';
+      boardHost.appendChild(hwEl('div', 'pg-empty', 'Could not load tasks'));
+    }
+
+    function pgkLoad() {
+      hwJ(PGK_BASE + '/tasks').then(function (data) {
+        if (!pgkAlive) { return; }
+        pgkRender(data);
+      }).catch(function () {
+        if (!pgkAlive) { return; }
+        pgkBoardFail();
+      });
+    }
+
+    function pgkBuildCol(num, items) {
+      var col = hwEl('div', 'pg-col');
+      col.setAttribute('data-prio', String(num));
+
+      var head = hwEl('div', 'pg-col-h');
+      head.appendChild(document.createTextNode('P' + num));
+      head.appendChild(hwEl('span', 'n', String(items.length)));
+      col.appendChild(head);
+
+      var body = hwEl('div', 'pg-col-body');
+      body.setAttribute('data-prio', String(num));
+
+      var i;
+      for (i = 0; i < items.length; i++) {
+        (function (task) {
+          var card = hwEl('div', 'pg-tcard', hwClean(task.title));
+          card.setAttribute('draggable', 'true');
+          card.setAttribute('data-id', String(task.id));
+
+          card.addEventListener('dragstart', function (e) {
+            pgkDragId = task.id;
+            if (e && e.dataTransfer) {
+              try {
+                e.dataTransfer.setData('text/plain', String(task.id));
+                e.dataTransfer.effectAllowed = 'move';
+              } catch (err) { /* ignore */ }
+            }
+          });
+
+          card.addEventListener('dragend', function () {
+            pgkDragId = null;
+            pgkSuppressClick = true;
+            setTimeout(function () { pgkSuppressClick = false; }, 250);
+            pgkClearHover();
+          });
+
+          card.addEventListener('click', function () {
+            if (pgkSuppressClick || pgkDragId !== null) { return; }
+            pgkPost('/tasks/toggle', { id: task.id }).then(function () {
+              return pgkLoad();
+            }).catch(function () { /* keep board as-is */ });
+          });
+
+          body.appendChild(card);
+        })(items[i]);
+      }
+
+      if (items.length === 0) {
+        body.appendChild(hwEl('div', 'pg-muted', 'No tasks'));
+      }
+
+      body.addEventListener('dragover', function (e) {
+        if (pgkDragId === null) { return; }
+        e.preventDefault();
+        if (e.dataTransfer) { e.dataTransfer.dropEffect = 'move'; }
+        pgkAddHover(body);
+      });
+
+      body.addEventListener('dragleave', function (e) {
+        var r = body.getBoundingClientRect();
+        if (e && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          return;
+        }
+        body.className = 'pg-col-body';
+        if (body.parentNode && body.parentNode.className) {
+          body.parentNode.className = 'pg-col';
+        }
+      });
+
+      body.addEventListener('drop', function (e) {
+        e.preventDefault();
+        pgkClearHover();
+        var id = pgkDragId;
+        if (id === null && e && e.dataTransfer) {
+          try { id = e.dataTransfer.getData('text/plain'); } catch (err) { id = null; }
+        }
+        pgkDragId = null;
+        if (id === null || id === '') { return; }
+        pgkPost('/tasks/priority', { id: id, priority: num }).then(function () {
+          return pgkLoad();
+        }).catch(function () { return pgkLoad(); });
+      });
+
+      col.appendChild(body);
+      return col;
+    }
+
+    function pgkClearHover() {
+      var all = boardHost.getElementsByClassName('pg-col-body');
+      var i;
+      for (i = 0; i < all.length; i++) {
+        all[i].className = 'pg-col-body';
+        if (all[i].parentNode && all[i].parentNode.className) {
+          all[i].parentNode.className = 'pg-col';
+        }
+      }
+    }
+
+    function pgkAddHover(node) {
+      var all = boardHost.getElementsByClassName('pg-col-body');
+      var i;
+      for (i = 0; i < all.length; i++) {
+        all[i].className = 'pg-col-body';
+        if (all[i].parentNode && all[i].parentNode.className) {
+          all[i].parentNode.className = 'pg-col';
+        }
+      }
+      node.className = 'pg-col-body drop-hover';
+      if (node.parentNode && node.parentNode.className) {
+        node.parentNode.className = 'pg-col drop-hover';
+      }
+    }
+
+    function pgkRender(data) {
+      var tasks = pgkIsArray(data) ? data : [];
+      var cols = [[], [], [], []];
+      var lower = 0;
+      var i;
+      for (i = 0; i < tasks.length; i++) {
+        var t = tasks[i];
+        if (!t || t.done !== false) { continue; }
+        var p = pgkPrio(t.title);
+        if (p < PGK_COLS) {
+          cols[p].push(t);
+        } else {
+          lower++;
+        }
+      }
+
+      boardHost.innerHTML = '';
+
+      var board = hwEl('div', 'pg-board');
+      for (i = 0; i < PGK_COLS; i++) {
+        board.appendChild(pgkBuildCol(i, cols[i]));
+      }
+      boardHost.appendChild(board);
+
+      if (lower > 0) {
+        boardHost.appendChild(hwEl('div', 'pg-muted', String(lower) + ' more task' + (lower === 1 ? '' : 's') + ' at lower priority'));
+      }
+    }
+
+    function pgkAdd() {
+      var title = String(inp.value || '').replace(/^\s+|\s+$/g, '');
+      if (title === '') { return; }
+      inp.value = '';
+      pgkPost('/tasks/add', { title: title }).then(function () {
+        return pgkLoad();
+      }).catch(function () {
+        boardHost.innerHTML = '';
+        boardHost.appendChild(hwEl('div', 'pg-empty', 'Could not add task'));
+      });
+    }
+
+    btn.addEventListener('click', pgkAdd);
+    inp.addEventListener('keydown', function (e) {
+      var key = e.key || e.keyCode;
+      if (key === 'Enter' || key === 13) {
+        e.preventDefault();
+        pgkAdd();
+      }
+    });
+
+    pgkLoad();
+
+    var timer = setInterval(function () {
+      if (pgkDragId === null) { pgkLoad(); }
+    }, 60000);
+
+    return function () {
+      pgkAlive = false;
+      clearInterval(timer);
+    };
+  };
+
+  // ---- meds ----
+  // ---- meds ----
+  HW_PAGE['meds'] = function (host) {
+    host.innerHTML = '';
+
+    var pgMedsKey = 'padawan_meds_v1';
+    var pgMedsResetTimer = null;
+
+    var pgMedsList = [
+      { name: 'Concerta', dose: '36mg at 8am' },
+      { name: 'Fluoxetine', dose: '40mg at 8am' },
+      { name: 'Olanzapine', dose: '30mg at 6pm' }
+    ];
+
+    function pgMedsDefaults() {
+      var d = {};
+      for (var i = 0; i < pgMedsList.length; i++) d[pgMedsList[i].name] = 0;
+      return d;
+    }
+
+    function pgMedsCounts() {
+      var raw = hwLS.get(pgMedsKey, null);
+      var out = pgMedsDefaults();
+      if (raw && typeof raw === 'object') {
+        for (var i = 0; i < pgMedsList.length; i++) {
+          var n = pgMedsList[i].name;
+          var v = Number(raw[n]);
+          if (v === v && v >= 0) out[n] = Math.floor(v);
+        }
+      }
+      return out;
+    }
+
+    var pgMedsData = pgMedsCounts();
+
+    function pgMedsSave() {
+      hwLS.set(pgMedsKey, pgMedsData);
+    }
+
+    var pgMedsWrap = hwEl('div', 'pg-wrap');
+    host.appendChild(pgMedsWrap);
+
+    var pgMedsRows = hwEl('div', 'pg-wrap');
+    pgMedsWrap.appendChild(pgMedsRows);
+
+    // ---- reset all (two-click confirm) ----
+    var pgMedsResetBtn = hwEl('button', 'pg-btn warn', 'Reset all');
+    pgMedsResetBtn.type = 'button';
+
+    function pgMedsArmReset() {
+      pgMedsResetBtn.innerHTML = '';
+      pgMedsResetBtn.appendChild(document.createTextNode('Sure?'));
+      pgMedsResetBtn.className = 'pg-btn warn';
+      if (pgMedsResetTimer) clearTimeout(pgMedsResetTimer);
+      pgMedsResetTimer = setTimeout(function () {
+        pgMedsResetTimer = null;
+        pgMedsResetBtn.innerHTML = '';
+        pgMedsResetBtn.appendChild(document.createTextNode('Reset all'));
+      }, 4000);
+    }
+
+    function pgMedsDisarmReset() {
+      if (pgMedsResetTimer) {
+        clearTimeout(pgMedsResetTimer);
+        pgMedsResetTimer = null;
+      }
+      pgMedsResetBtn.innerHTML = '';
+      pgMedsResetBtn.appendChild(document.createTextNode('Reset all'));
+    }
+
+    pgMedsResetBtn.onclick = function () {
+      var label = pgMedsResetBtn.textContent || '';
+      if (label.indexOf('Sure') === -1) {
+        pgMedsArmReset();
+        return;
+      }
+      pgMedsDisarmReset();
+      pgMedsData = pgMedsDefaults();
+      pgMedsSave();
+      pgMedsRenderAll();
+    };
+
+    // ---- one row per medication ----
+    var pgMedsRefs = [];
+
+    function pgMedsRenderAll() {
+      for (var i = 0; i < pgMedsRefs.length; i++) {
+        var ref = pgMedsRefs[i];
+        var n = pgMedsData[ref.name] || 0;
+        ref.big.innerHTML = '';
+        ref.big.appendChild(document.createTextNode(String(n)));
+        ref.subCount.innerHTML = '';
+        ref.subCount.appendChild(document.createTextNode('taken ' + n + ' times'));
+        ref.minus.disabled = n <= 0;
+      }
+    }
+
+    function pgMedsBuildRow(med) {
+      var row = hwEl('div', 'pg-row');
+
+      var main = hwEl('div', 'pg-main');
+      main.appendChild(hwEl('div', 'pg-title', med.name));
+      main.appendChild(hwEl('div', 'pg-sub', med.dose));
+      var subCount = hwEl('div', 'pg-sub', 'taken 0 times');
+      main.appendChild(subCount);
+      row.appendChild(main);
+
+      var side = hwEl('div', 'pg-side');
+      var minus = hwEl('button', 'pg-btn', '-');
+      minus.type = 'button';
+      var big = hwEl('div', 'pg-big', '0');
+      var plus = hwEl('button', 'pg-btn', '+');
+      plus.type = 'button';
+
+      side.appendChild(minus);
+      side.appendChild(big);
+      side.appendChild(plus);
+      row.appendChild(side);
+
+      function bump(delta) {
+        var n = pgMedsData[med.name] || 0;
+        n = n + delta;
+        if (n < 0) n = 0;
+        pgMedsData[med.name] = n;
+        pgMedsSave();
+        pgMedsRenderAll();
+      }
+
+      minus.onclick = function () { bump(-1); };
+      plus.onclick = function () { bump(1); };
+
+      pgMedsRefs.push({
+        name: med.name,
+        big: big,
+        subCount: subCount,
+        minus: minus
+      });
+
+      pgMedsRows.appendChild(row);
+      return row;
+    }
+
+    for (var i = 0; i < pgMedsList.length; i++) {
+      pgMedsBuildRow(pgMedsList[i]);
+    }
+
+    pgMedsWrap.appendChild(pgMedsResetBtn);
+    pgMedsRenderAll();
+
+    return function () {
+      if (pgMedsResetTimer) clearTimeout(pgMedsResetTimer);
+      pgMedsResetTimer = null;
+    };
+  };
+
+  // ---- money ----
+  // ---- money ----
+  HW_PAGE['money'] = function (host) {
+    host.innerHTML = '';
+
+    var pgMoneyAPI = 'http://localhost:2008/api';
+    var pgMoneyTimer = null;
+
+    var pgMoneyWrap = hwEl('div', 'pg-wrap');
+    host.appendChild(pgMoneyWrap);
+    var pgMoneySplit = hwEl('div', 'pg-split');
+    pgMoneyWrap.appendChild(pgMoneySplit);
+
+    function pgMoneyNum(v) {
+      var n = Number(v);
+      if (n !== n || n === Infinity || n === -Infinity) return 0;
+      return n;
+    }
+
+    function pgMoneyHead(c, title) {
+      c.innerHTML = '';
+      c.appendChild(hwEl('h3', '', title));
+    }
+
+    function pgMoneyCard(title) {
+      var c = hwEl('div', 'pg-card');
+      pgMoneySplit.appendChild(c);
+      pgMoneyHead(c, title);
+      return c;
+    }
+
+    function pgMoneyMuted(c, text) {
+      c.appendChild(hwEl('div', 'pg-muted', text));
+    }
+
+    function pgMoneyStat(c, k, v) {
+      var s = hwEl('div', 'pg-stat');
+      s.appendChild(hwEl('span', 'k', k));
+      s.appendChild(hwEl('span', 'v', v));
+      c.appendChild(s);
+      return s;
+    }
+
+    var pgMoneyCardNW = pgMoneyCard('NET WORTH');
+    var pgMoneyCardGoals = pgMoneyCard('GOALS');
+    var pgMoneyCardSubs = pgMoneyCard('SUBSCRIPTIONS');
+    var pgMoneyCardLedger = pgMoneyCard('LEDGER');
+
+    // ---- card 1: NET WORTH ----
+    function pgMoneyRenderNW(money, nw) {
+      var c = pgMoneyCardNW;
+      pgMoneyHead(c, 'NET WORTH');
+
+      if (!money && !nw) {
+        pgMoneyMuted(c, 'Money data unavailable.');
+        return;
+      }
+
+      if (nw && nw.net_worth !== undefined && nw.net_worth !== null) {
+        c.appendChild(hwEl('div', 'pg-big', hwMoney(pgMoneyNum(nw.net_worth))));
+      } else {
+        pgMoneyMuted(c, 'Net worth unavailable.');
+      }
+
+      if (!money) {
+        pgMoneyMuted(c, 'Balance data unavailable.');
+        return;
+      }
+
+      pgMoneyStat(c, 'Cash', hwMoney(pgMoneyNum(money.cash)));
+      pgMoneyStat(c, 'Savings', hwMoney(pgMoneyNum(money.savings)));
+
+      var accts = money.accounts;
+      if (accts && typeof accts === 'object') {
+        for (var acctKey in accts) {
+          if (!Object.prototype.hasOwnProperty.call(accts, acctKey)) continue;
+          pgMoneyStat(c, acctKey, hwMoney(pgMoneyNum(accts[acctKey])));
+        }
+      }
+    }
+
+    // ---- card 2: GOALS ----
+    function pgMoneyRenderGoals(goals) {
+      var c = pgMoneyCardGoals;
+      pgMoneyHead(c, 'GOALS');
+
+      if (!goals) {
+        pgMoneyMuted(c, 'Goals unavailable.');
+        return;
+      }
+      if (!goals.length) {
+        c.appendChild(hwEl('div', 'pg-empty', 'No goals yet.'));
+        return;
+      }
+
+      for (var gi = 0; gi < goals.length; gi++) {
+        var goal = goals[gi] || {};
+        var saved = pgMoneyNum(goal.saved);
+        var target = pgMoneyNum(goal.target);
+
+        c.appendChild(hwEl('div', 'pg-title', hwClean(goal.name || 'Goal')));
+        pgMoneyStat(c, 'Saved', hwMoney(saved) + ' of ' + hwMoney(target));
+
+        var pct = 0;
+        if (target > 0) pct = (saved / target) * 100;
+        if (pct !== pct || pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
+
+        var bar = hwEl('div', 'pg-bar');
+        var fill = hwEl('i', '', '');
+        fill.style.width = pct + '%';
+        bar.appendChild(fill);
+        c.appendChild(bar);
+      }
+    }
+
+    // ---- card 3: SUBSCRIPTIONS ----
+    function pgMoneyRenderSubs(subs) {
+      var c = pgMoneyCardSubs;
+      pgMoneyHead(c, 'SUBSCRIPTIONS');
+
+      if (!subs) {
+        pgMoneyMuted(c, 'Subscriptions unavailable.');
+        return;
+      }
+      if (!subs.length) {
+        c.appendChild(hwEl('div', 'pg-empty', 'No subscriptions.'));
+        return;
+      }
+
+      var monthly = 0;
+      for (var si = 0; si < subs.length; si++) {
+        var sub = subs[si] || {};
+        var amount = pgMoneyNum(sub.amount);
+        var freq = (sub.frequency === undefined || sub.frequency === null) ? '' : String(sub.frequency);
+
+        var srow = hwEl('div', 'pg-row');
+        var smain = hwEl('div', 'pg-main');
+        smain.appendChild(hwEl('div', 'pg-title', hwClean(sub.name || 'Subscription')));
+        smain.appendChild(hwEl('div', 'pg-sub', hwClean(freq) || 'monthly'));
+        srow.appendChild(smain);
+        srow.appendChild(hwEl('div', 'pg-side', hwMoney(amount)));
+        c.appendChild(srow);
+
+        if (freq.toLowerCase() === 'monthly') monthly += amount;
+      }
+
+      pgMoneyStat(c, 'Monthly total', hwMoney(monthly));
+    }
+
+    // ---- card 4: LEDGER ----
+    function pgMoneyRenderLedger(ledger) {
+      var c = pgMoneyCardLedger;
+      pgMoneyHead(c, 'LEDGER');
+
+      if (!ledger) {
+        pgMoneyMuted(c, 'Ledger unavailable.');
+        return;
+      }
+      if (!ledger.length) {
+        c.appendChild(hwEl('div', 'pg-empty', 'No transactions yet.'));
+        return;
+      }
+
+      for (var li = 0; li < ledger.length; li++) {
+        var entry = ledger[li] || {};
+        var desc = entry.description || entry.name || entry.title || entry.desc || entry.category || 'Transaction';
+        var when = entry.date || entry.time || entry.ts || entry.datetime || '';
+        var amt = null;
+        if (entry.amount !== undefined && entry.amount !== null) amt = pgMoneyNum(entry.amount);
+        else if (entry.value !== undefined && entry.value !== null) amt = pgMoneyNum(entry.value);
+
+        var lrow = hwEl('div', 'pg-row');
+        var lmain = hwEl('div', 'pg-main');
+        lmain.appendChild(hwEl('div', 'pg-title', hwClean(desc)));
+        if (when) lmain.appendChild(hwEl('div', 'pg-sub', hwClean(String(when))));
+        lrow.appendChild(lmain);
+        if (amt !== null) lrow.appendChild(hwEl('div', 'pg-side', hwMoney(amt)));
+        c.appendChild(lrow);
+      }
+    }
+
+    function pgMoneyLoad() {
+      return Promise.all([
+        hwJ(pgMoneyAPI + '/money').catch(function () { return null; }),
+        hwJ(pgMoneyAPI + '/money/networth').catch(function () { return null; }),
+        hwJ(pgMoneyAPI + '/money/goals').catch(function () { return null; }),
+        hwJ(pgMoneyAPI + '/money/subscriptions').catch(function () { return null; }),
+        hwJ(pgMoneyAPI + '/money/ledger').catch(function () { return null; })
+      ]).then(function (pgMoneyRes) {
+        pgMoneyRenderNW(pgMoneyRes[0], pgMoneyRes[1]);
+        pgMoneyRenderGoals(pgMoneyRes[2]);
+        pgMoneyRenderSubs(pgMoneyRes[3]);
+        pgMoneyRenderLedger(pgMoneyRes[4]);
+      }).catch(function () {
+        console.log('money page: load failed');
+      });
+    }
+
+    pgMoneyLoad();
+    pgMoneyTimer = setInterval(pgMoneyLoad, 60000);
+
+    return function () {
+      if (pgMoneyTimer) clearInterval(pgMoneyTimer);
+      pgMoneyTimer = null;
+    };
+  };
+
+  // ---- shopping ----
+  // ---- Shopping ----
+  HW_PAGE['shopping'] = function (host) {
+    host.innerHTML = '';
+
+    var pgShopWrap = hwEl('div', 'pg-wrap');
+    var pgShopAddbar = hwEl('div', 'pg-addbar');
+    var pgShopInput = hwEl('input', 'pg-input');
+    var pgShopAddBtn = hwEl('button', 'pg-btn', '+');
+    var pgShopCount = hwEl('div', 'pg-muted', '');
+    var pgShopList = hwEl('div', 'pg-wrap');
+    var pgShopMsg = hwEl('div', 'pg-empty', '');
+
+    pgShopInput.type = 'text';
+    pgShopInput.placeholder = 'Add an item...';
+    pgShopAddBtn.type = 'button';
+
+    pgShopAddbar.appendChild(pgShopInput);
+    pgShopAddbar.appendChild(pgShopAddBtn);
+    pgShopWrap.appendChild(pgShopAddbar);
+    pgShopWrap.appendChild(pgShopCount);
+    pgShopMsg.style.display = 'none';
+    pgShopWrap.appendChild(pgShopMsg);
+    pgShopWrap.appendChild(pgShopList);
+    host.appendChild(pgShopWrap);
+
+    function pgShopPost(path, body) {
+      return fetch('http://localhost:2008/api' + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    }
+
+    function pgShopShowMsg(msg) {
+      pgShopMsg.textContent = msg;
+      pgShopMsg.style.display = '';
+    }
+
+    function pgShopHideMsg() {
+      pgShopMsg.textContent = '';
+      pgShopMsg.style.display = 'none';
+    }
+
+    function pgShopItemText(entry) {
+      var t = (entry && entry.text) ? String(entry.text) : '';
+      return hwClean(t.slice(5)).trim();
+    }
+
+    function pgShopLoad() {
+      return hwJ('http://localhost:2008/api/brain').then(function (data) {
+        var all = (data && data.length) ? data : [];
+        var items = [];
+        var i;
+        for (i = 0; i < all.length; i++) {
+          if (all[i] && typeof all[i].text === 'string' && all[i].text.indexOf('shop ') === 0) {
+            items.push(all[i]);
+          }
+        }
+        pgShopRender(items);
+      }).catch(function () {
+        pgShopCount.textContent = '';
+        pgShopList.innerHTML = '';
+        pgShopShowMsg('Shopping list unavailable.');
+      });
+    }
+
+    function pgShopRender(items) {
+      var i, entry, done, row, main, title, side, btn, del, toBuy = 0, pending = [], bought = [];
+      for (i = 0; i < items.length; i++) {
+        if (items[i] && items[i].type === 'task') {
+          pending.push(items[i]);
+          toBuy++;
+        } else {
+          bought.push(items[i]);
+        }
+      }
+
+      pgShopHideMsg();
+      pgShopCount.textContent = toBuy + ' to buy';
+      pgShopList.innerHTML = '';
+
+      var ordered = pending.concat(bought);
+      for (i = 0; i < ordered.length; i++) {
+        entry = ordered[i];
+        done = entry.type !== 'task';
+        row = hwEl('div', 'pg-row' + (done ? ' done' : ''));
+        main = hwEl('div', 'pg-main');
+        title = hwEl('div', 'pg-title', pgShopItemText(entry));
+        main.appendChild(title);
+        row.appendChild(main);
+
+        side = hwEl('div', 'pg-side');
+        btn = hwEl('button', 'pg-btn', done ? 'Undo' : 'Bought');
+        btn.type = 'button';
+        (function (id) {
+          btn.onclick = function () {
+            btn.disabled = true;
+            pgShopPost('/brain/update', { id: id, type: 'task' }).then(function () {
+              return pgShopLoad();
+            }).catch(function () {
+              btn.disabled = false;
+              pgShopShowMsg('Could not update that item.');
+            });
+          };
+        })(entry.id);
+        side.appendChild(btn);
+
+        del = hwEl('button', 'pg-btn warn', 'x');
+        del.type = 'button';
+        (function (id) {
+          del.onclick = function () {
+            del.disabled = true;
+            pgShopPost('/brain/delete', { id: id }).then(function () {
+              return pgShopLoad();
+            }).catch(function () {
+              del.disabled = false;
+              pgShopShowMsg('Could not delete that item.');
+            });
+          };
+        })(entry.id);
+        side.appendChild(del);
+
+        row.appendChild(side);
+        pgShopList.appendChild(row);
+      }
+
+      if (!ordered.length) {
+        pgShopShowMsg('Nothing on the shopping list.');
+      }
+    }
+
+    function pgShopAdd() {
+      var text = pgShopInput.value ? pgShopInput.value.trim() : '';
+      if (!text) { return; }
+      pgShopAddBtn.disabled = true;
+      pgShopPost('/brain/add', { text: 'shop ' + text, type: 'task' }).then(function () {
+        pgShopInput.value = '';
+        pgShopAddBtn.disabled = false;
+        return pgShopLoad();
+      }).catch(function () {
+        pgShopAddBtn.disabled = false;
+        pgShopShowMsg('Could not add that item.');
+      });
+    }
+
+    pgShopAddBtn.onclick = pgShopAdd;
+    pgShopInput.onkeydown = function (e) {
+      if (e && e.key === 'Enter') { pgShopAdd(); }
+    };
+
+    var pgShopTimer = setInterval(pgShopLoad, 60000);
+    pgShopLoad();
+
+    return function () { clearInterval(pgShopTimer); };
+  };
+
+  // ---- habits ----
+  // ---- Habits ----
+  HW_PAGE['habits'] = function (host) {
+    host.innerHTML = '';
+
+    var HAB_KEY = 'padawan_habits_v1';
+    var HAB_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+    var pgHabWrap = hwEl('div', 'pg-wrap');
+    var pgHabAddbar = hwEl('div', 'pg-addbar');
+    var pgHabInput = hwEl('input', 'pg-input');
+    var pgHabAddBtn = hwEl('button', 'pg-btn', '+');
+    var pgHabMsg = hwEl('div', 'pg-empty', 'No habits yet. Add one above.');
+    var pgHabGrid = hwEl('div', 'pg-hab');
+
+    pgHabInput.type = 'text';
+    pgHabInput.placeholder = 'Add a habit...';
+    pgHabInput.maxLength = 24;
+    pgHabInput.setAttribute('maxlength', '24');
+    pgHabAddBtn.type = 'button';
+
+    pgHabAddbar.appendChild(pgHabInput);
+    pgHabAddbar.appendChild(pgHabAddBtn);
+    pgHabWrap.appendChild(pgHabAddbar);
+    pgHabWrap.appendChild(pgHabMsg);
+    pgHabWrap.appendChild(pgHabGrid);
+    host.appendChild(pgHabWrap);
+
+    var pgHabData = pgHabRead();
+    var pgHabDay = pgHabTodayKey();
+    var pgHabArmedBtn = null;
+    var pgHabArmedIdx = -1;
+    var pgHabArmTimer = null;
+
+    // ---------- local date helpers ----------
+    function pgHabPad(n) {
+      return (n < 10 ? '0' : '') + n;
+    }
+
+    function pgHabKey(d) {
+      return d.getFullYear() + '-' + pgHabPad(d.getMonth() + 1) + '-' + pgHabPad(d.getDate());
+    }
+
+    function pgHabTodayKey() {
+      return pgHabKey(new Date());
+    }
+
+    function pgHabIndexOf(arr, v) {
+      var i;
+      if (!arr) { return -1; }
+      for (i = 0; i < arr.length; i++) {
+        if (arr[i] === v) { return i; }
+      }
+      return -1;
+    }
+
+    // ---------- storage: normalise, read, write ----------
+    function pgHabNormName(v) {
+      var s = hwClean(v == null ? '' : String(v)).replace(/\s+/g, ' ').trim();
+      return s.slice(0, 24);
+    }
+
+    function pgHabNormDays(v) {
+      var out = [], i;
+      if (!v || typeof v.length !== 'number') { return out; }
+      for (i = 0; i < v.length; i++) {
+        if (typeof v[i] === 'string' && HAB_DATE.test(v[i]) && pgHabIndexOf(out, v[i]) < 0) {
+          out.push(v[i]);
+        }
+      }
+      return out;
+    }
+
+    function pgHabNormHabit(h) {
+      var days;
+      if (typeof h === 'string') { return { name: pgHabNormName(h), days: [] }; }
+      if (!h || typeof h !== 'object') { return null; }
+      var nm = pgHabNormName(h.name != null ? h.name : h.title);
+      if (!nm) { return null; }
+      days = h.days;
+      if (!days && h.done) { days = h.done; }
+      return { name: nm, days: pgHabNormDays(days) };
+    }
+
+    function pgHabRead() {
+      var raw = hwLS.get(HAB_KEY, null);
+      var src = null, list = [], k, i, n;
+      if (raw && raw.habits && typeof raw.habits.length === 'number') {
+        src = raw.habits;                                  // current shape
+      } else if (raw && typeof raw.length === 'number') {
+        src = raw;                                         // legacy: bare array
+      } else if (raw && typeof raw === 'object') {
+        list = [];                                         // legacy: { Water: [dates] }
+        for (k in raw) {
+          if (raw.hasOwnProperty && raw.hasOwnProperty(k)) { list.push({ name: k, days: raw[k] }); }
+        }
+        src = list;
+      }
+      var out = [];
+      if (src) {
+        for (i = 0; i < src.length; i++) {
+          n = pgHabNormHabit(src[i]);
+          if (n) { out.push(n); }
+        }
+      }
+      return { habits: out };
+    }
+
+    function pgHabSave() {
+      hwLS.set(HAB_KEY, { habits: pgHabData.habits });
+    }
+
+    // ---------- streaks ----------
+    function pgHabHas(habit, key) {
+      return pgHabIndexOf(habit.days, key) >= 0;
+    }
+
+    function pgHabStreak(days) {
+      var d = new Date(), n = 0;
+      if (pgHabIndexOf(days, pgHabKey(d)) < 0) {
+        d.setDate(d.getDate() - 1);                        // today not ticked yet: count from yesterday
+        if (pgHabIndexOf(days, pgHabKey(d)) < 0) { return 0; }
+      }
+      while (pgHabIndexOf(days, pgHabKey(d)) >= 0) {
+        n++;
+        d.setDate(d.getDate() - 1);
+      }
+      return n;
+    }
+
+    // ---------- second-click delete confirmation ----------
+    function pgHabResetArm() {
+      if (pgHabArmTimer) {
+        clearTimeout(pgHabArmTimer);
+        pgHabArmTimer = null;
+      }
+      if (pgHabArmedBtn) { pgHabArmedBtn.textContent = 'x'; }
+      pgHabArmedBtn = null;
+      pgHabArmedIdx = -1;
+    }
+
+    function pgHabArmDelete(btn, idx) {
+      pgHabResetArm();
+      pgHabArmedBtn = btn;
+      pgHabArmedIdx = idx;
+      btn.textContent = 'sure';
+      pgHabArmTimer = setTimeout(function () { pgHabResetArm(); }, 5000);
+    }
+
+    // ---------- actions ----------
+    function pgHabRemove(idx) {
+      pgHabResetArm();
+      if (!pgHabData.habits[idx]) { return; }
+      pgHabData.habits.splice(idx, 1);
+      pgHabSave();
+      pgHabRender();
+    }
+
+    function pgHabToggle(idx) {
+      pgHabResetArm();
+      var h = pgHabData.habits[idx];
+      if (!h) { return; }
+      var today = pgHabTodayKey();
+      var at = pgHabIndexOf(h.days, today);
+      if (at >= 0) {
+        h.days.splice(at, 1);
+      } else {
+        h.days.push(today);
+        h.days.sort();
+      }
+      pgHabSave();
+      pgHabRender();
+    }
+
+    function pgHabAdd() {
+      var name = pgHabNormName(pgHabInput.value);
+      pgHabInput.value = '';
+      if (!name) { return; }
+      pgHabData.habits.push({ name: name, days: [] });
+      pgHabSave();
+      pgHabRender();
+    }
+
+    // ---------- rendering ----------
+    function pgHabTile(habit, idx, today) {
+      var tile = hwEl('div', 'pg-hcard' + (pgHabHas(habit, today) ? ' done' : ''));
+      tile.appendChild(hwEl('div', 'nm', habit.name));
+      tile.appendChild(hwEl('div', 'st', String(pgHabStreak(habit.days))));
+      tile.appendChild(hwEl('div', 'lb', 'day streak'));
+
+      var del = hwEl('button', 'pg-btn warn', 'x');
+      del.type = 'button';
+      del.title = 'Remove ' + habit.name;
+      del.onclick = function (e) {
+        if (e && e.stopPropagation) { e.stopPropagation(); }
+        if (pgHabArmedIdx === idx) {
+          pgHabRemove(idx);
+        } else {
+          pgHabArmDelete(del, idx);
+        }
+      };
+      tile.appendChild(del);
+
+      tile.onclick = function () { pgHabToggle(idx); };
+      return tile;
+    }
+
+    function pgHabRender() {
+      var today = pgHabTodayKey();
+      pgHabDay = today;
+      pgHabResetArm();
+      pgHabGrid.innerHTML = '';
+      var list = pgHabData.habits;
+      var i;
+      if (!list.length) {
+        pgHabMsg.style.display = '';
+        return;
+      }
+      pgHabMsg.style.display = 'none';
+      for (i = 0; i < list.length; i++) {
+        pgHabGrid.appendChild(pgHabTile(list[i], i, today));
+      }
+    }
+
+    pgHabAddBtn.onclick = pgHabAdd;
+    pgHabInput.onkeydown = function (e) {
+      if (e && e.key === 'Enter') { pgHabAdd(); }
+    };
+
+    pgHabRender();
+
+    var pgHabTimer = setInterval(function () {
+      if (pgHabTodayKey() !== pgHabDay) { pgHabRender(); }   // midnight rollover
+    }, 60000);
+
+    return function () {
+      clearInterval(pgHabTimer);
+      pgHabResetArm();
+    };
+  };
+
+  // ---- brain ----
+  // ---- brain ----
+  HW_PAGE['brain'] = function (host) {
+    host.innerHTML = '';
+
+    var pgBrainAPI = 'http://localhost:2008/api';
+    var pgBrainTimer = null;
+    var pgBrainItems = [];
+
+    var pgBrainWrap = hwEl('div', 'pg-wrap');
+    host.appendChild(pgBrainWrap);
+
+    // ---- add bar ----
+    var pgBrainBar = hwEl('div', 'pg-addbar');
+    pgBrainWrap.appendChild(pgBrainBar);
+
+    var pgBrainInput = hwEl('input', 'pg-input', '');
+    pgBrainInput.type = 'text';
+    pgBrainInput.placeholder = 'Capture a thought...';
+    pgBrainBar.appendChild(pgBrainInput);
+
+    var pgBrainAddTask = hwEl('button', 'pg-btn', 'Task');
+    pgBrainBar.appendChild(pgBrainAddTask);
+
+    var pgBrainAddNote = hwEl('button', 'pg-btn', 'Note');
+    pgBrainBar.appendChild(pgBrainAddNote);
+
+    // ---- count line ----
+    var pgBrainCount = hwEl('div', 'pg-muted', '');
+    pgBrainWrap.appendChild(pgBrainCount);
+
+    // ---- list ----
+    var pgBrainList = hwEl('div', 'pg-wrap');
+    pgBrainWrap.appendChild(pgBrainList);
+
+    function pgBrainPost(path, body) {
+      return fetch(pgBrainAPI + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(function (r) { return r.json(); });
+    }
+
+    function pgBrainNum(v) {
+      var n = Number(v);
+      if (n !== n || n === Infinity || n === -Infinity) return 0;
+      return n;
+    }
+
+    // ts may arrive in seconds or milliseconds
+    function pgBrainMs(ts) {
+      var n = pgBrainNum(ts);
+      if (n > 0 && n < 100000000000) n = n * 1000;
+      return n;
+    }
+
+    function pgBrainAge(ts) {
+      var ms = pgBrainMs(ts);
+      if (!ms) return '';
+      var diff = Date.now() - ms;
+      if (diff < 0) diff = 0;
+
+      var mins = Math.floor(diff / 60000);
+      var hours = Math.floor(diff / 3600000);
+      var days = Math.floor(diff / 86400000);
+
+      if (mins < 1) return 'just now';
+      if (mins === 1) return '1 minute ago';
+      if (mins < 60) return mins + ' minutes ago';
+      if (hours === 1) return '1 hour ago';
+      if (hours < 24) return hours + ' hours ago';
+      if (days === 1) return 'yesterday';
+      if (days < 30) return days + ' days ago';
+
+      var months = Math.floor(days / 30);
+      if (months === 1) return '1 month ago';
+      if (months < 12) return months + ' months ago';
+
+      var years = Math.floor(days / 365);
+      if (years <= 1) return '1 year ago';
+      return years + ' years ago';
+    }
+
+    function pgBrainTypeWord(type) {
+      if (type === 'task') return 'task';
+      if (type === 'done') return 'done';
+      return 'note';
+    }
+
+    function pgBrainEmpty(text) {
+      pgBrainList.appendChild(hwEl('div', 'pg-empty', text));
+    }
+
+    function pgBrainRender() {
+      pgBrainList.innerHTML = '';
+
+      var items = pgBrainItems;
+      if (!items || !items.length) {
+        pgBrainEmpty('Nothing captured yet.');
+        return;
+      }
+
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i] || {};
+        var type = it.type;
+        var text = hwClean(it.text || '') || 'Untitled';
+        var done = type !== 'task';
+
+        var row = hwEl('div', 'pg-row' + (done ? ' done' : ''));
+
+        var main = hwEl('div', 'pg-main');
+        main.appendChild(hwEl('div', 'pg-title', text));
+
+        var age = pgBrainAge(it.ts);
+        var word = pgBrainTypeWord(type);
+        main.appendChild(hwEl('div', 'pg-sub', age ? age + ' - ' + word : word));
+        row.appendChild(main);
+
+        var toggle = hwEl('button', 'pg-btn', type === 'task' ? 'Done' : 'Undo');
+        pgBrainToggle(toggle, it, type);
+        row.appendChild(toggle);
+
+        var del = hwEl('button', 'pg-btn warn', 'x');
+        pgBrainDelete(del, it);
+        row.appendChild(del);
+
+        pgBrainList.appendChild(row);
+      }
+    }
+
+    function pgBrainToggle(btn, it, type) {
+      btn.onclick = function () {
+        btn.disabled = true;
+        pgBrainPost('/brain/update', {
+          id: it.id,
+          type: type === 'task' ? 'done' : 'task'
+        }).catch(function () {
+          console.log('brain page: toggle failed');
+        }).then(function () {
+          return pgBrainLoad();
+        });
+      };
+    }
+
+    function pgBrainDelete(btn, it) {
+      btn.onclick = function () {
+        btn.disabled = true;
+        pgBrainPost('/brain/delete', { id: it.id }).catch(function () {
+          console.log('brain page: delete failed');
+        }).then(function () {
+          return pgBrainLoad();
+        });
+      };
+    }
+
+    function pgBrainAdd(type) {
+      var text = (pgBrainInput.value || '').trim();
+      if (!text) return;
+
+      pgBrainInput.value = '';
+      pgBrainAddTask.disabled = true;
+      pgBrainAddNote.disabled = true;
+
+      pgBrainPost('/brain/add', { text: text, type: type }).catch(function () {
+        console.log('brain page: add failed');
+      }).then(function () {
+        pgBrainAddTask.disabled = false;
+        pgBrainAddNote.disabled = false;
+        return pgBrainLoad();
+      });
+    }
+
+    function pgBrainSort(items) {
+      items.sort(function (a, b) {
+        var ta = pgBrainMs((a || {}).ts);
+        var tb = pgBrainMs((b || {}).ts);
+        if (ta === tb) return 0;
+        return tb - ta;
+      });
+      return items;
+    }
+
+    function pgBrainLoad() {
+      return hwJ(pgBrainAPI + '/brain').then(function (data) {
+        if (!data || !data.length) {
+          pgBrainItems = [];
+          pgBrainCount.textContent = '0 to do';
+          pgBrainRender();
+          return;
+        }
+        pgBrainItems = pgBrainSort(data.slice());
+        pgBrainRender();
+
+        var todo = 0;
+        for (var i = 0; i < pgBrainItems.length; i++) {
+          if ((pgBrainItems[i] || {}).type === 'task') todo++;
+        }
+        pgBrainCount.textContent = todo + ' to do';
+      }).catch(function () {
+        console.log('brain page: load failed');
+        pgBrainCount.textContent = '0 to do';
+        pgBrainList.innerHTML = '';
+        pgBrainEmpty('Brain unavailable.');
+      });
+    }
+
+    pgBrainAddTask.onclick = function () { pgBrainAdd('task'); };
+    pgBrainAddNote.onclick = function () { pgBrainAdd('note'); };
+
+    pgBrainInput.onkeydown = function (e) {
+      if (e.key === 'Enter' || e.keyCode === 13) {
+        pgBrainAdd('task');
+      }
+    };
+
+    pgBrainLoad();
+    pgBrainTimer = setInterval(pgBrainLoad, 60000);
+
+    return function () {
+      if (pgBrainTimer) clearInterval(pgBrainTimer);
+      pgBrainTimer = null;
+    };
+  };
+
+  // ---- school ----
+  // ---- School ----
+  HW_PAGE['school'] = function (host) {
+    host.innerHTML = '';
+
+    var wrap = hwEl('div', 'pg-wrap');
+    host.appendChild(wrap);
+
+    var pgSchoolData = { sacs: [], exams: [] };
+    var pgSchoolErr = null;
+    var pgSchoolWD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    var pgSchoolMO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Parse 'YYYY-MM-DD' (or an ISO string) as a LOCAL date so AEST never shifts it.
+    function pgSchoolDate(s) {
+      if (!s) return null;
+      var m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      var d = new Date(s);
+      if (isNaN(d.getTime())) return null;
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+
+    function pgSchoolKey(d) {
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    }
+
+    function pgSchoolFmt(d) {
+      if (!d) return '';
+      return pgSchoolWD[d.getDay()] + ' ' + d.getDate() + ' ' + pgSchoolMO[d.getMonth()];
+    }
+
+    function pgSchoolRel(d) {
+      if (!d) return '';
+      var days = Math.round((pgSchoolKey(d) - pgSchoolKey(new Date())) / 86400000);
+      if (days === 0) return 'today';
+      if (days === 1) return 'tomorrow';
+      if (days === -1) return 'yesterday';
+      if (days > 0) return 'in ' + days + ' days';
+      return Math.abs(days) + ' days ago';
+    }
+
+    function pgSchoolTrunc(s, n) {
+      s = String(s == null ? '' : s);
+      if (s.length <= n) return s;
+      return s.slice(0, n - 1) + '\u2026';
+    }
+
+    function pgSchoolSort(list) {
+      var out = [];
+      for (var i = 0; i < list.length; i++) {
+        var d = pgSchoolDate(list[i] && list[i].date);
+        out.push({ name: list[i] && list[i].name, date: d, ts: d ? d.getTime() : Infinity });
+      }
+      out.sort(function (a, b) { return a.ts - b.ts; });
+      return out;
+    }
+
+    function pgSchoolOnDay(list, d) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].date && pgSchoolKey(list[i].date) === pgSchoolKey(d)) return list[i].name;
+      }
+      return null;
+    }
+
+    function pgSchoolCard(title, list, emptyText) {
+      var card = hwEl('div', 'pg-card');
+      var h = hwEl('h3', null, title);
+      card.appendChild(h);
+      if (!list.length) {
+        card.appendChild(hwEl('div', 'pg-empty', emptyText));
+        return card;
+      }
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        var row = hwEl('div', 'pg-row');
+        var main = hwEl('div', 'pg-main');
+        main.appendChild(hwEl('div', 'pg-title', hwClean(it.name || 'Untitled')));
+        main.appendChild(hwEl('div', 'pg-sub', pgSchoolRel(it.date)));
+        row.appendChild(main);
+        row.appendChild(hwEl('div', 'pg-side', pgSchoolFmt(it.date)));
+        card.appendChild(row);
+      }
+      return card;
+    }
+
+    function pgSchoolWeekStrip(sacs, exams) {
+      var card = hwEl('div', 'pg-card');
+      card.appendChild(hwEl('h3', null, 'THIS WEEK'));
+      var wk = hwEl('div', 'pg-wk');
+
+      var now = new Date();
+      var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      var dow = today.getDay();                 // 0 = Sunday
+      var back = (dow + 6) % 7;                 // days back to Monday
+      var monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - back);
+
+      for (var i = 0; i < 7; i++) {
+        var day = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+        var cell = hwEl('div', 'pg-wkd');
+        if (pgSchoolKey(day) === pgSchoolKey(today)) cell.className = 'pg-wkd today';
+        cell.appendChild(hwEl('div', 'n', pgSchoolWD[day.getDay()]));
+        cell.appendChild(hwEl('div', 'd', String(day.getDate())));
+        var name = pgSchoolOnDay(sacs, day) || pgSchoolOnDay(exams, day);
+        cell.appendChild(hwEl('div', 'c', name ? pgSchoolTrunc(hwClean(name), 14) : ''));
+        wk.appendChild(cell);
+      }
+
+      card.appendChild(wk);
+      return card;
+    }
+
+    function pgSchoolRender() {
+      wrap.innerHTML = '';
+
+      if (pgSchoolErr) {
+        wrap.appendChild(hwEl('div', 'pg-empty', pgSchoolErr));
+        return;
+      }
+
+      var sacs = pgSchoolSort(pgSchoolData.sacs || []);
+      var exams = pgSchoolSort(pgSchoolData.exams || []);
+
+      var split = hwEl('div', 'pg-split');
+      split.appendChild(pgSchoolCard('SACS', sacs, 'No SACs scheduled.'));
+      split.appendChild(pgSchoolCard('EXAMS', exams, 'No exams scheduled.'));
+      wrap.appendChild(split);
+
+      wrap.appendChild(pgSchoolWeekStrip(sacs, exams));
+    }
+
+    function pgSchoolLoad() {
+      hwJ('http://localhost:2008/api/school').then(function (data) {
+        pgSchoolErr = null;
+        pgSchoolData = {
+          sacs: (data && data.sacs) || [],
+          exams: (data && data.exams) || []
+        };
+        pgSchoolRender();
+      }).catch(function () {
+        pgSchoolErr = 'Could not load school data.';
+        pgSchoolRender();
+      });
+    }
+
+    pgSchoolRender();
+    pgSchoolLoad();
+
+    var pgSchoolTimer = setInterval(pgSchoolLoad, 300000);
+    return function () { clearInterval(pgSchoolTimer); };
+  };
+
+  // ---- referee ----
+  // ---- referee ----
+  HW_PAGE['referee'] = function (host) {
+    host.innerHTML = '';
+
+    var pgRefereeWrap = hwEl('div', 'pg-wrap');
+    host.appendChild(pgRefereeWrap);
+
+    var pgRefereeSplit = hwEl('div', 'pg-split');
+    pgRefereeWrap.appendChild(pgRefereeSplit);
+
+    var pgRefereeGamesCard = hwEl('div', 'pg-card');
+    var pgRefereeGamesH = hwEl('h3', '', 'UPCOMING GAMES');
+    pgRefereeGamesCard.appendChild(pgRefereeGamesH);
+    var pgRefereeGamesBody = hwEl('div', '');
+    pgRefereeGamesCard.appendChild(pgRefereeGamesBody);
+    pgRefereeSplit.appendChild(pgRefereeGamesCard);
+
+    var pgRefereeSessionsCard = hwEl('div', 'pg-card');
+    var pgRefereeSessionsH = hwEl('h3', '', 'COACHING SESSIONS');
+    pgRefereeSessionsCard.appendChild(pgRefereeSessionsH);
+    var pgRefereeSessionsBody = hwEl('div', '');
+    pgRefereeSessionsCard.appendChild(pgRefereeSessionsBody);
+    pgRefereeSplit.appendChild(pgRefereeSessionsCard);
+
+    var pgRefereeTeamsCard = hwEl('div', 'pg-card');
+    var pgRefereeTeamsH = hwEl('h3', '', 'TEAMS');
+    pgRefereeTeamsCard.appendChild(pgRefereeTeamsH);
+    var pgRefereeTeamsBody = hwEl('div', '');
+    pgRefereeTeamsCard.appendChild(pgRefereeTeamsBody);
+    pgRefereeSplit.appendChild(pgRefereeTeamsCard);
+
+    var pgRefereeRulesCard = hwEl('div', 'pg-card');
+    var pgRefereeRulesH = hwEl('h3', '', 'RULES');
+    pgRefereeRulesCard.appendChild(pgRefereeRulesH);
+    var pgRefereeRulesNote = hwEl('div', 'pg-muted',
+      'The FIBA rules assistant lives on the referee page of the main site.');
+    pgRefereeRulesCard.appendChild(pgRefereeRulesNote);
+    pgRefereeWrap.appendChild(pgRefereeRulesCard);
+
+    function pgRefereeEmpty(body, text) {
+      body.innerHTML = '';
+      body.appendChild(hwEl('div', 'pg-empty', text));
+    }
+
+    function pgRefereeRow(name, sub, side) {
+      var row = hwEl('div', 'pg-row');
+      var main = hwEl('div', 'pg-main');
+      main.appendChild(hwEl('div', 'pg-title', name));
+      if (sub) {
+        main.appendChild(hwEl('div', 'pg-sub', sub));
+      }
+      row.appendChild(main);
+      if (side) {
+        row.appendChild(hwEl('div', 'pg-side', side));
+      }
+      return row;
+    }
+
+    function pgRefereeWhen(item) {
+      var raw = item.start || item.date || item.time || item.end;
+      if (!raw) {
+        return '';
+      }
+      var d = new Date(raw);
+      if (isNaN(d.getTime())) {
+        return String(raw);
+      }
+      var day = d.toLocaleDateString('en-AU', {
+        weekday: 'short', day: 'numeric', month: 'short'
+      });
+      var tm = d.toLocaleTimeString('en-AU', {
+        hour: 'numeric', minute: '2-digit'
+      });
+      return day + ' ' + tm;
+    }
+
+    function pgRefereeName(item) {
+      var n = item.name || item.title || item.summary || '';
+      return hwClean(String(n));
+    }
+
+    function pgRefereeDateField(item) {
+      var keys = ['date', 'start', 'when', 'day', 'time', 'created', 'updated'];
+      for (var i = 0; i < keys.length; i++) {
+        if (item[keys[i]]) {
+          var d = new Date(item[keys[i]]);
+          if (!isNaN(d.getTime())) {
+            return d.toLocaleDateString('en-AU', {
+              weekday: 'short', day: 'numeric', month: 'short'
+            });
+          }
+          return String(item[keys[i]]);
+        }
+      }
+      return '';
+    }
+
+    function pgRefereeRenderGames(list) {
+      var games = [];
+      var i;
+      for (i = 0; i < (list || []).length; i++) {
+        var ev = list[i];
+        var summary = String((ev && (ev.summary || ev.title)) || '');
+        if (/ref|game|basketball|vs/i.test(summary)) {
+          games.push(ev);
+        }
+      }
+      if (!games.length) {
+        pgRefereeEmpty(pgRefereeGamesBody, 'No games in the next two weeks.');
+        return;
+      }
+      pgRefereeGamesBody.innerHTML = '';
+      for (i = 0; i < games.length && i < 6; i++) {
+        var it = games[i];
+        var sum = String((it && (it.summary || it.title)) || '');
+        pgRefereeGamesBody.appendChild(pgRefereeRow(
+          hwClean(sum),
+          it && it.location ? hwClean(String(it.location)) : '',
+          pgRefereeWhen(it)
+        ));
+      }
+    }
+
+    function pgRefereeRenderSessions(sessions) {
+      if (!sessions || !sessions.length) {
+        pgRefereeEmpty(pgRefereeSessionsBody, 'No sessions recorded.');
+        return;
+      }
+      pgRefereeSessionsBody.innerHTML = '';
+      for (var i = 0; i < sessions.length; i++) {
+        var s = sessions[i] || {};
+        var side = pgRefereeDateField(s);
+        var sub = '';
+        if (s.team) {
+          sub = hwClean(String(s.team));
+        } else if (s.location) {
+          sub = hwClean(String(s.location));
+        }
+        pgRefereeSessionsBody.appendChild(pgRefereeRow(
+          pgRefereeName(s) || 'Session',
+          sub,
+          side
+        ));
+      }
+    }
+
+    function pgRefereeRenderTeams(teams) {
+      if (!teams || !teams.length) {
+        pgRefereeEmpty(pgRefereeTeamsBody, 'No teams yet.');
+        return;
+      }
+      pgRefereeTeamsBody.innerHTML = '';
+      for (var i = 0; i < teams.length; i++) {
+        var t = teams[i] || {};
+        var side = pgRefereeDateField(t);
+        var sub = '';
+        if (t.league) {
+          sub = hwClean(String(t.league));
+        } else if (t.age_group || t.grade) {
+          sub = hwClean(String(t.age_group || t.grade));
+        }
+        pgRefereeTeamsBody.appendChild(pgRefereeRow(
+          pgRefereeName(t) || 'Team',
+          sub,
+          side
+        ));
+      }
+    }
+
+    function pgRefereeRefresh() {
+      hwJ('http://localhost:2008/api/calendar/events?days=14').then(function (data) {
+        pgRefereeRenderGames(data || []);
+      }).catch(function () {
+        pgRefereeEmpty(pgRefereeGamesBody, 'No games in the next two weeks.');
+      });
+
+      hwJ('http://localhost:2008/api/coaching').then(function (data) {
+        var d = data || {};
+        pgRefereeRenderSessions(d.sessions || []);
+        pgRefereeRenderTeams(d.teams || []);
+      }).catch(function () {
+        pgRefereeEmpty(pgRefereeSessionsBody, 'No sessions recorded.');
+        pgRefereeEmpty(pgRefereeTeamsBody, 'No teams yet.');
+      });
+    }
+
+    pgRefereeRefresh();
+
+    var pgRefereeTimer = setInterval(pgRefereeRefresh, 60000);
+
+    return function () {
+      clearInterval(pgRefereeTimer);
+    };
+  };
+
+  // ---- news ----
+  // ---- news ----
+  HW_PAGE['news'] = function (host) {
+    host.innerHTML = '';
+
+    var pgNewsWrap = hwEl('div', 'pg-wrap');
+    host.appendChild(pgNewsWrap);
+
+    var pgNewsHead = hwEl('div', 'pg-row');
+    var pgNewsMain = hwEl('div', 'pg-main');
+    var pgNewsTitle = hwEl('div', 'pg-title', 'Headlines');
+    pgNewsMain.appendChild(pgNewsTitle);
+    var pgNewsRefreshBtn = hwEl('button', 'pg-btn', 'Refresh');
+    pgNewsRefreshBtn.type = 'button';
+    pgNewsHead.appendChild(pgNewsMain);
+    pgNewsHead.appendChild(pgNewsRefreshBtn);
+    pgNewsWrap.appendChild(pgNewsHead);
+
+    var pgNewsNote = hwEl('div', 'pg-muted');
+    pgNewsNote.style.display = 'none';
+    pgNewsWrap.appendChild(pgNewsNote);
+
+    var pgNewsList = hwEl('div', 'pg-news');
+    pgNewsWrap.appendChild(pgNewsList);
+
+    var pgNewsBusy = false;
+
+    function pgNewsRender(items) {
+      pgNewsList.innerHTML = '';
+      var n = items ? items.length : 0;
+      pgNewsTitle.textContent = n === 1 ? '1 headline' : n + ' headlines';
+      if (!n) {
+        var empty = hwEl('div', 'pg-empty', 'No headlines right now.');
+        pgNewsList.appendChild(empty);
+        return;
+      }
+      for (var i = 0; i < n; i++) {
+        var it = items[i] || {};
+        var a = hwEl('a', 'pg-nitem');
+        a.href = it.link || '#';
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.appendChild(hwEl('div', 't', hwClean(it.title || '')));
+        a.appendChild(hwEl('div', 's', it.source || ''));
+        pgNewsList.appendChild(a);
+      }
+    }
+
+    function pgNewsNoteShow(msg) {
+      if (msg) {
+        pgNewsNote.textContent = msg;
+        pgNewsNote.style.display = '';
+      } else {
+        pgNewsNote.textContent = '';
+        pgNewsNote.style.display = 'none';
+      }
+    }
+
+    function pgNewsEmpty(msg) {
+      pgNewsList.innerHTML = '';
+      pgNewsTitle.textContent = 'Headlines';
+      pgNewsList.appendChild(hwEl('div', 'pg-empty', msg));
+    }
+
+    function pgNewsRefresh() {
+      if (pgNewsBusy) { return; }
+      pgNewsBusy = true;
+      pgNewsRefreshBtn.disabled = true;
+      hwJ('http://localhost:2009/api/news').then(function (data) {
+        var items = (data && data.items) ? data.items : [];
+        if (!items.length) { throw new Error('no items'); }
+        hwLS.set('padawan_news_v1', items);
+        pgNewsNoteShow('');
+        pgNewsRender(items);
+      }).catch(function () {
+        var cached = hwLS.get('padawan_news_v1', null);
+        if (cached && cached.length) {
+          pgNewsRender(cached);
+          pgNewsNoteShow('Showing the last refresh.');
+        } else {
+          pgNewsNoteShow('');
+          pgNewsEmpty('Could not load headlines.');
+        }
+      }).then(function () {
+        pgNewsBusy = false;
+        pgNewsRefreshBtn.disabled = false;
+      });
+    }
+
+    pgNewsRefreshBtn.onclick = function () { pgNewsRefresh(); };
+
+    var pgNewsCached = hwLS.get('padawan_news_v1', null);
+    if (pgNewsCached && pgNewsCached.length) {
+      pgNewsRender(pgNewsCached);
+    }
+    pgNewsRefresh();
+
+    var pgNewsTimer = setInterval(pgNewsRefresh, 600000);
+
+    return function () {
+      clearInterval(pgNewsTimer);
+    };
+  };
+
+  // ---- timer ----
+  // ---- Timer ----
+  HW_PAGE['timer'] = function (host) {
+    host.innerHTML = '';
+
+    var wrap = hwEl('div', 'pg-wrap');
+    host.appendChild(wrap);
+
+    var pgTimerKey = 'padawan_timer_state_v1';
+    var pgTimerPresets = [5, 10, 15, 25, 45];
+    var pgTimerTickMs = 250;
+
+    // ---- state -------------------------------------------------------------
+    // {mode:'countdown'|'stopwatch', running:bool, endsAt:epoch|null,
+    //  startedAt:epoch|null, remainingMs:number, elapsedMs:number, preset:minutes}
+    var pgTimerState = {
+      mode: 'countdown',
+      running: false,
+      endsAt: null,
+      startedAt: null,
+      remainingMs: 25 * 60000,
+      elapsedMs: 0,
+      preset: 25
+    };
+
+    function pgTimerNum(v) {
+      var n = Number(v);
+      if (!isFinite(n) || n < 0) return 0;
+      return n;
+    }
+
+    function pgTimerSave() {
+      hwLS.set(pgTimerKey, pgTimerState);
+    }
+
+    function pgTimerNow() {
+      return new Date().getTime();
+    }
+
+    // ---- restore -----------------------------------------------------------
+    function pgTimerRestore() {
+      var saved = hwLS.get(pgTimerKey, null);
+      if (!saved || typeof saved !== 'object') return;
+
+      var st = {
+        mode: saved.mode === 'stopwatch' ? 'stopwatch' : 'countdown',
+        running: !!saved.running,
+        endsAt: (typeof saved.endsAt === 'number' && isFinite(saved.endsAt)) ? saved.endsAt : null,
+        startedAt: (typeof saved.startedAt === 'number' && isFinite(saved.startedAt)) ? saved.startedAt : null,
+        remainingMs: pgTimerNum(saved.remainingMs),
+        elapsedMs: pgTimerNum(saved.elapsedMs),
+        preset: pgTimerNum(saved.preset) > 0 ? pgTimerNum(saved.preset) : 25
+      };
+
+      var now = pgTimerNow();
+
+      if (st.mode === 'countdown') {
+        if (st.running && st.endsAt !== null) {
+          var left = st.endsAt - now;
+          if (left <= 0) {
+            // it finished while we were away
+            st.remainingMs = 0;
+            st.endsAt = null;
+            st.running = false;
+          } else {
+            st.remainingMs = left;
+          }
+        } else {
+          st.running = false;
+          st.endsAt = null;
+          // brand new / wiped store: fall back to the saved preset length
+          if (!pgTimerNum(saved.remainingMs) && !pgTimerNum(saved.elapsedMs)) {
+            st.remainingMs = st.preset * 60000;
+          }
+        }
+      } else {
+        if (st.running && st.startedAt !== null) {
+          // the elapsed base already lives in elapsedMs; the live part is
+          // recomputed from startedAt on every tick, so nothing to fix here
+          if (now - st.startedAt < 0) st.startedAt = now;
+        } else {
+          st.running = false;
+          st.startedAt = null;
+        }
+      }
+
+      pgTimerState = st;
+      pgTimerSave();
+    }
+
+    // ---- formatting --------------------------------------------------------
+    // Countdown rounds UP so a fresh 5:00 reads 05:00 (not 04:59) and a dead
+    // countdown reads 00:00. The stopwatch rounds DOWN (elapsed whole seconds).
+    function pgTimerFmt(ms, roundUp) {
+      var secs = pgTimerNum(ms) / 1000;
+      var total = roundUp ? Math.ceil(secs) : Math.floor(secs);
+      var h = Math.floor(total / 3600);
+      var m = Math.floor((total - h * 3600) / 60);
+      var s = total - h * 3600 - m * 60;
+      var mm = String(m);
+      var ss = String(s);
+      if (mm.length < 2) mm = '0' + mm;
+      if (ss.length < 2) ss = '0' + ss;
+      if (h > 0) return String(h) + ':' + mm + ':' + ss;
+      return mm + ':' + ss;
+    }
+
+    // ---- live values -------------------------------------------------------
+    function pgTimerRemaining() {
+      if (pgTimerState.mode !== 'countdown') return pgTimerState.remainingMs;
+      if (pgTimerState.running && pgTimerState.endsAt !== null) {
+        var left = pgTimerState.endsAt - pgTimerNow();
+        return left > 0 ? left : 0;
+      }
+      return pgTimerState.remainingMs;
+    }
+
+    function pgTimerElapsed() {
+      if (pgTimerState.mode !== 'stopwatch') return pgTimerState.elapsedMs;
+      if (pgTimerState.running && pgTimerState.startedAt !== null) {
+        var delta = pgTimerNow() - pgTimerState.startedAt;
+        if (delta < 0) delta = 0;
+        return pgTimerState.elapsedMs + delta;
+      }
+      return pgTimerState.elapsedMs;
+    }
+
+    function pgTimerReadoutMs() {
+      return pgTimerState.mode === 'stopwatch' ? pgTimerElapsed() : pgTimerRemaining();
+    }
+
+    // ---- chrome ------------------------------------------------------------
+    var pgTimerModeRow = hwEl('div', 'pg-chips');
+    wrap.appendChild(pgTimerModeRow);
+
+    var pgTimerModeChips = {};
+    var pgTimerModes = [
+      { id: 'countdown', label: 'Countdown' },
+      { id: 'stopwatch', label: 'Stopwatch' }
+    ];
+    var i;
+    for (i = 0; i < pgTimerModes.length; i++) {
+      (function (m) {
+        var chip = hwEl('button', 'pg-chip', m.label);
+        chip.onclick = function () { pgTimerSetMode(m.id); };
+        pgTimerModeChips[m.id] = chip;
+        pgTimerModeRow.appendChild(chip);
+      })(pgTimerModes[i]);
+    }
+
+    var pgTimerReadout = hwEl('div', 'pg-big', '25:00');
+    pgTimerReadout.style.fontSize = '4rem';
+    pgTimerReadout.style.textAlign = 'center';
+    pgTimerReadout.style.lineHeight = '1.05';
+    wrap.appendChild(pgTimerReadout);
+
+    var pgTimerPresetRow = hwEl('div', 'pg-chips');
+    wrap.appendChild(pgTimerPresetRow);
+
+    var pgTimerPresetChips = {};
+    for (i = 0; i < pgTimerPresets.length; i++) {
+      (function (mins) {
+        var chip = hwEl('button', 'pg-chip', mins + ' min');
+        chip.onclick = function () { pgTimerSetPreset(mins); };
+        pgTimerPresetChips[mins] = chip;
+        pgTimerPresetRow.appendChild(chip);
+      })(pgTimerPresets[i]);
+    }
+
+    var pgTimerControls = hwEl('div', 'pg-chips');
+    wrap.appendChild(pgTimerControls);
+
+    var pgTimerStartBtn = hwEl('button', 'pg-btn', 'Start');
+    var pgTimerStopBtn = hwEl('button', 'pg-btn', 'Stop');
+    var pgTimerResetBtn = hwEl('button', 'pg-btn', 'Reset');
+    pgTimerControls.appendChild(pgTimerStartBtn);
+    pgTimerControls.appendChild(pgTimerStopBtn);
+    pgTimerControls.appendChild(pgTimerResetBtn);
+
+    var pgTimerHint = hwEl('div', 'pg-muted',
+      'Countdown counts down and stops at zero. Stopwatch counts up.');
+    wrap.appendChild(pgTimerHint);
+
+    // ---- actions -----------------------------------------------------------
+    function pgTimerSetMode(mode) {
+      if (pgTimerState.mode === mode) return;
+      pgTimerPause();
+      pgTimerState.mode = mode;
+      pgTimerSave();
+      pgTimerRender(true);
+    }
+
+    function pgTimerSetPreset(mins) {
+      pgTimerState.preset = mins;
+      pgTimerState.mode = 'countdown';
+      pgTimerState.running = false;
+      pgTimerState.endsAt = null;
+      pgTimerState.remainingMs = mins * 60000;
+      pgTimerSave();
+      pgTimerRender(true);
+    }
+
+    // Snapshot the live value back into the stored numbers without changing
+    // anything else. Used by Stop, by a mode switch, and on teardown.
+    function pgTimerPause() {
+      if (!pgTimerState.running) return;
+      var now = pgTimerNow();
+      if (pgTimerState.mode === 'countdown') {
+        var left = pgTimerState.endsAt === null ? pgTimerState.remainingMs
+                                                : pgTimerState.endsAt - now;
+        pgTimerState.remainingMs = left > 0 ? left : 0;
+      } else {
+        var delta = pgTimerState.startedAt === null ? 0 : now - pgTimerState.startedAt;
+        if (delta < 0) delta = 0;
+        pgTimerState.elapsedMs = pgTimerState.elapsedMs + delta;
+      }
+      pgTimerState.running = false;
+      pgTimerState.endsAt = null;
+      pgTimerState.startedAt = null;
+      pgTimerSave();
+    }
+
+    function pgTimerStart() {
+      if (pgTimerState.running) return;
+      var now = pgTimerNow();
+      if (pgTimerState.mode === 'countdown') {
+        if (pgTimerState.remainingMs <= 0) return;   // nothing left to run
+        pgTimerState.endsAt = now + pgTimerState.remainingMs;
+        pgTimerState.startedAt = null;
+      } else {
+        pgTimerState.startedAt = now;
+        pgTimerState.endsAt = null;
+      }
+      pgTimerState.running = true;
+      pgTimerSave();
+      pgTimerRender(true);
+    }
+
+    function pgTimerStop() {
+      if (!pgTimerState.running) return;
+      pgTimerPause();
+      pgTimerRender(true);
+    }
+
+    function pgTimerReset() {
+      pgTimerState.running = false;
+      pgTimerState.endsAt = null;
+      pgTimerState.startedAt = null;
+      if (pgTimerState.mode === 'countdown') {
+        pgTimerState.remainingMs = pgTimerState.preset * 60000;
+      } else {
+        pgTimerState.elapsedMs = 0;
+      }
+      pgTimerSave();
+      pgTimerRender(true);
+    }
+
+    pgTimerStartBtn.onclick = pgTimerStart;
+    pgTimerStopBtn.onclick = pgTimerStop;
+    pgTimerResetBtn.onclick = pgTimerReset;
+
+    // ---- render ------------------------------------------------------------
+    function pgTimerRender(force) {
+      var isCd = pgTimerState.mode === 'countdown';
+
+      for (var k in pgTimerModeChips) {
+        if (!pgTimerModeChips.hasOwnProperty(k)) continue;
+        pgTimerModeChips[k].className = (k === pgTimerState.mode) ? 'pg-chip on' : 'pg-chip';
+      }
+
+      pgTimerPresetRow.style.display = isCd ? '' : 'none';
+
+      var liveMs = pgTimerReadoutMs();
+      var txt = pgTimerFmt(liveMs, isCd);
+      if (force || pgTimerReadout.textContent !== txt) pgTimerReadout.textContent = txt;
+
+      for (var p in pgTimerPresetChips) {
+        if (!pgTimerPresetChips.hasOwnProperty(p)) continue;
+        var mins = Number(p);
+        var active = isCd && !pgTimerState.running &&
+                     pgTimerState.remainingMs === mins * 60000;
+        pgTimerPresetChips[p].className = active ? 'pg-chip on' : 'pg-chip';
+      }
+
+      pgTimerStartBtn.disabled = pgTimerState.running ||
+        (isCd && pgTimerState.remainingMs <= 0);
+      pgTimerStopBtn.disabled = !pgTimerState.running;
+
+      var hint = isCd
+        ? 'Countdown stops at zero. Pick a preset, then Start.'
+        : 'Stopwatch counts up. Start, Stop, Reset.';
+      if (pgTimerHint.textContent !== hint) pgTimerHint.textContent = hint;
+    }
+
+    // ---- clock -------------------------------------------------------------
+    function pgTimerTick() {
+      var changed = false;
+
+      if (pgTimerState.running && pgTimerState.mode === 'countdown') {
+        var left = pgTimerState.endsAt === null ? 0 : pgTimerState.endsAt - pgTimerNow();
+        if (left <= 0) {
+          // finished: park at zero, stop, and remember it
+          pgTimerState.running = false;
+          pgTimerState.endsAt = null;
+          pgTimerState.remainingMs = 0;
+          pgTimerSave();
+          changed = true;
+        }
+      }
+
+      pgTimerRender(changed);
+    }
+
+    pgTimerRestore();
+    pgTimerRender(true);
+
+    var pgTimerInterval = setInterval(pgTimerTick, pgTimerTickMs);
+
+    return function () {
+      clearInterval(pgTimerInterval);
+      pgTimerPause();      // keep the saved numbers honest for the next open
+    };
+  };
+
+  // ---- countdown ----
+  // ---- Countdown ----
+  HW_PAGE['countdown'] = function (host) {
+    host.innerHTML = '';
+
+    var wrap = hwEl('div', 'pg-wrap');
+    host.appendChild(wrap);
+
+    var pgCdItems = [];
+    var pgCdErr = null;
+
+    var pgCdWD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    var pgCdMO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Anything whose summary reads like something worth counting down to.
+    var pgCdNotable = /sac|exam|test|assignment|due|birthday|appointment|driving|lesson/i;
+
+    // Parse 'YYYY-MM-DD' / an ISO timestamp as a LOCAL date so AEST never shifts it.
+    function pgCdDate(s) {
+      if (!s) return null;
+      var m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      var d = new Date(s);
+      if (isNaN(d.getTime())) return null;
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+
+    function pgCdDay(d) {
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    }
+
+    function pgCdToday() {
+      var n = new Date();
+      return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+    }
+
+    function pgCdYmd(d) {
+      var mm = String(d.getMonth() + 1);
+      var dd = String(d.getDate());
+      if (mm.length < 2) mm = '0' + mm;
+      if (dd.length < 2) dd = '0' + dd;
+      return d.getFullYear() + '-' + mm + '-' + dd;
+    }
+
+    function pgCdDaysAway(d) {
+      return Math.round((pgCdDay(d) - pgCdDay(pgCdToday())) / 86400000);
+    }
+
+    // 'TODAY' / 'TOMORROW' / 'N days'
+    function pgCdLabel(days) {
+      if (days === 0) return 'TODAY';
+      if (days === 1) return 'TOMORROW';
+      return days + ' days';
+    }
+
+    function pgCdTrunc(s, n) {
+      s = String(s == null ? '' : s);
+      if (s.length <= n) return s;
+      return s.slice(0, n - 1) + '\u2026';
+    }
+
+    function pgCdAdd(list, name, date, kind) {
+      if (!date) return;
+      var clean = hwClean(name);
+      if (!clean) return;
+      list.push({
+        name: clean,
+        date: date,
+        kind: kind,
+        days: pgCdDaysAway(date),
+        key: clean.toLowerCase() + '|' + pgCdYmd(date)
+      });
+    }
+
+    function pgCdBuild(school, events) {
+      var list = [];
+
+      var sacs = (school && school.sacs) || [];
+      var exams = (school && school.exams) || [];
+      var i;
+
+      for (i = 0; i < sacs.length; i++) {
+        pgCdAdd(list, sacs[i] && sacs[i].name, pgCdDate(sacs[i] && sacs[i].date), 'SAC');
+      }
+      for (i = 0; i < exams.length; i++) {
+        pgCdAdd(list, exams[i] && exams[i].name, pgCdDate(exams[i] && exams[i].date), 'Exam');
+      }
+
+      var evs = events || [];
+      for (i = 0; i < evs.length; i++) {
+        var ev = evs[i] || {};
+        var summary = hwClean(ev.summary);
+        if (!summary) continue;
+        if (!pgCdNotable.test(summary)) continue;
+        pgCdAdd(list, summary, pgCdDate(ev.start), 'Event');
+      }
+
+      // dedupe by name + date
+      var seen = {};
+      var out = [];
+      for (i = 0; i < list.length; i++) {
+        if (seen[list[i].key]) continue;
+        seen[list[i].key] = true;
+        out.push(list[i]);
+      }
+
+      // drop anything already past, nearest first
+      var upcoming = [];
+      for (i = 0; i < out.length; i++) {
+        if (out[i].days >= 0) upcoming.push(out[i]);
+      }
+      upcoming.sort(function (a, b) {
+        if (a.days !== b.days) return a.days - b.days;
+        return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0);
+      });
+      return upcoming;
+    }
+
+    function pgCdNameOnDay(list, day) {
+      for (var i = 0; i < list.length; i++) {
+        if (pgCdDay(list[i].date) === pgCdDay(day)) return list[i].name;
+      }
+      return '';
+    }
+
+    function pgCdWeekCard(list) {
+      var card = hwEl('div', 'pg-card');
+      card.appendChild(hwEl('h3', null, 'THIS WEEK'));
+
+      var wk = hwEl('div', 'pg-wk');
+      var today = pgCdToday();
+      var back = (today.getDay() + 6) % 7;      // days back to Monday
+      var monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - back);
+
+      for (var i = 0; i < 7; i++) {
+        var day = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+        var isToday = pgCdDay(day) === pgCdDay(today);
+        var cell = hwEl('div', isToday ? 'pg-wkd today' : 'pg-wkd');
+        cell.appendChild(hwEl('div', 'n', pgCdWD[day.getDay()]));
+        cell.appendChild(hwEl('div', 'd', String(day.getDate())));
+        var nm = pgCdNameOnDay(list, day);
+        cell.appendChild(hwEl('div', 'c', nm ? pgCdTrunc(nm, 14) : ''));
+        wk.appendChild(cell);
+      }
+
+      card.appendChild(wk);
+      return card;
+    }
+
+    function pgCdNote() {
+      return hwEl('div', 'pg-muted',
+        'Fills in from SACs, exams and calendar events.');
+    }
+
+    function pgCdRender() {
+      wrap.innerHTML = '';
+
+      var items = pgCdItems;
+
+      if (pgCdErr) {
+        wrap.appendChild(hwEl('div', 'pg-empty', pgCdErr));
+        wrap.appendChild(pgCdNote());
+        wrap.appendChild(pgCdWeekCard([]));
+        return;
+      }
+
+      if (!items.length) {
+        wrap.appendChild(hwEl('div', 'pg-empty', 'Nothing coming up.'));
+        wrap.appendChild(pgCdNote());
+        wrap.appendChild(pgCdWeekCard(items));
+        return;
+      }
+
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        var row = hwEl('div', it.days <= 3 ? 'pg-row now' : 'pg-row');
+
+        var main = hwEl('div', 'pg-main');
+        main.appendChild(hwEl('div', 'pg-title', it.name));
+        main.appendChild(hwEl('div', 'pg-sub', it.kind));
+        row.appendChild(main);
+
+        var side = hwEl('div', 'pg-side', pgCdLabel(it.days));
+        if (i === 0) side.style.fontSize = '2rem';   // the nearest one stands out
+        row.appendChild(side);
+
+        wrap.appendChild(row);
+      }
+
+      wrap.appendChild(pgCdWeekCard(items));
+    }
+
+    function pgCdLoad() {
+      var schoolDone = false;
+      var calDone = false;
+      var schoolData = null;
+      var calData = null;
+
+      function settle() {
+        if (!schoolDone || !calDone) return;
+        if (schoolData === null && calData === null) {
+          pgCdErr = 'Could not load what is coming up.';
+          pgCdItems = [];
+        } else {
+          pgCdErr = null;
+          pgCdItems = pgCdBuild(schoolData, calData);
+        }
+        pgCdRender();
+      }
+
+      hwJ('http://localhost:2008/api/school').then(function (d) {
+        schoolData = (d && typeof d === 'object') ? d : {};
+        schoolDone = true;
+        settle();
+      }).catch(function () {
+        schoolData = null;
+        schoolDone = true;
+        settle();
+      });
+
+      hwJ('http://localhost:2008/api/calendar/events?days=60').then(function (d) {
+        calData = (d && d.length !== undefined) ? d : [];
+        calDone = true;
+        settle();
+      }).catch(function () {
+        calData = null;
+        calDone = true;
+        settle();
+      });
+    }
+
+    pgCdRender();
+    pgCdLoad();
+
+    var pgCdTimer = setInterval(pgCdLoad, 300000);
+    return function () { clearInterval(pgCdTimer); };
+  };
+
+  // ---- whiteboard ----
+  // ---- whiteboard ----
+  HW_PAGE['whiteboard'] = function (host) {
+    host.innerHTML = '';
+
+    var pgWbKey = 'padawan_whiteboard_v1';
+    var pgWbHeight = 380;
+
+    var pgWbColors = ['#f5f7fa', '#7ff0b8', '#fde047', '#f87171'];
+    var pgWbSizes = [4, 9, 18];
+
+    var pgWbColor = pgWbColors[0];
+    var pgWbSize = pgWbSizes[1];
+
+    var pgWbColorBtns = [];
+    var pgWbSizeBtns = [];
+
+    var pgWbCanvas = null;
+    var pgWbCtx = null;
+    var pgWbCssW = 0;
+    var pgWbCssH = pgWbHeight;
+    var pgWbReady = false;
+    var pgWbDrawing = false;
+
+    var pgWbSaveTimer = null;
+    var pgWbResizeTimer = null;
+    var pgWbArmTimer = null;
+
+    var pgWbWrap = hwEl('div', 'pg-wrap');
+    host.appendChild(pgWbWrap);
+
+    // ---------- storage (raw PNG data URL under the old mirror's key) ----------
+    function pgWbRead() {
+      var raw = null;
+      try { raw = localStorage.getItem(pgWbKey); } catch (err) { raw = null; }
+      if (!raw) return null;
+      if (raw.indexOf('data:image') === 0) return raw;
+      if (raw.charAt(0) === '"') {
+        try {
+          var parsed = JSON.parse(raw);
+          if (typeof parsed === 'string' && parsed.indexOf('data:image') === 0) return parsed;
+        } catch (err2) { return null; }
+      }
+      return null;
+    }
+
+    function pgWbWrite(data) {
+      try { localStorage.setItem(pgWbKey, data); } catch (err) { console.log('whiteboard save failed', err); }
+    }
+
+    function pgWbClearStored() {
+      try { localStorage.removeItem(pgWbKey); } catch (err) { }
+    }
+
+    function pgWbCancelSave() {
+      if (pgWbSaveTimer) {
+        clearTimeout(pgWbSaveTimer);
+        pgWbSaveTimer = null;
+      }
+    }
+
+    function pgWbScheduleSave() {
+      pgWbCancelSave();
+      pgWbSaveTimer = setTimeout(function () {
+        pgWbSaveTimer = null;
+        if (!pgWbReady) return;
+        pgWbWrite(pgWbCanvas.toDataURL('image/png'));
+      }, 800);
+    }
+
+    // ---------- canvas sizing ----------
+    function pgWbSetupCanvas() {
+      var cssW = pgWbCanvas.clientWidth;
+      if (!cssW) cssW = pgWbWrap.clientWidth;
+      if (!cssW) cssW = 600;
+      var dpr = window.devicePixelRatio || 1;
+
+      pgWbCssW = cssW;
+      pgWbCssH = pgWbHeight;
+
+      pgWbCanvas.width = Math.round(cssW * dpr);
+      pgWbCanvas.height = Math.round(pgWbHeight * dpr);
+
+      pgWbCtx = pgWbCanvas.getContext('2d');
+      pgWbCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      pgWbCtx.lineCap = 'round';
+      pgWbCtx.lineJoin = 'round';
+      pgWbCtx.strokeStyle = pgWbColor;
+      pgWbCtx.lineWidth = pgWbSize;
+      pgWbReady = true;
+    }
+
+    function pgWbApplyPen() {
+      if (!pgWbCtx) return;
+      pgWbCtx.lineCap = 'round';
+      pgWbCtx.lineJoin = 'round';
+      pgWbCtx.strokeStyle = pgWbColor;
+      pgWbCtx.lineWidth = pgWbSize;
+    }
+
+    function pgWbDrawSrc(src) {
+      if (!src) return;
+      var img = new Image();
+      img.onload = function () {
+        if (!pgWbReady || !pgWbCtx) return;
+        pgWbCtx.drawImage(img, 0, 0, pgWbCssW, pgWbCssH);
+        pgWbApplyPen();
+      };
+      img.onerror = function () { };
+      img.src = src;
+    }
+
+    // ---------- pointer drawing ----------
+    function pgWbPos(e) {
+      var rect = pgWbCanvas.getBoundingClientRect();
+      var x = e.clientX - rect.left;
+      var y = e.clientY - rect.top;
+      if (x < 0) x = 0;
+      if (y < 0) y = 0;
+      if (x > pgWbCssW) x = pgWbCssW;
+      if (y > pgWbCssH) y = pgWbCssH;
+      return { x: x, y: y };
+    }
+
+    function pgWbDown(e) {
+      if (!pgWbReady) return;
+      if (e.button !== undefined && e.pointerType === 'mouse' && e.button !== 0) return;
+      pgWbDrawing = true;
+      if (e.preventDefault) e.preventDefault();
+      try {
+        if (pgWbCanvas.setPointerCapture) pgWbCanvas.setPointerCapture(e.pointerId);
+      } catch (err) { }
+      var p = pgWbPos(e);
+      pgWbApplyPen();
+      pgWbCtx.beginPath();
+      pgWbCtx.moveTo(p.x, p.y);
+      pgWbCtx.lineTo(p.x + 0.01, p.y);
+      pgWbCtx.stroke();
+    }
+
+    function pgWbMove(e) {
+      if (!pgWbDrawing || !pgWbReady) return;
+      if (e.preventDefault) e.preventDefault();
+      var p = pgWbPos(e);
+      pgWbCtx.lineTo(p.x, p.y);
+      pgWbCtx.stroke();
+    }
+
+    function pgWbUp(e) {
+      if (!pgWbDrawing) return;
+      pgWbDrawing = false;
+      try {
+        if (pgWbCanvas.releasePointerCapture) pgWbCanvas.releasePointerCapture(e.pointerId);
+      } catch (err) { }
+      pgWbScheduleSave();
+    }
+
+    function pgWbCancel(e) {
+      if (!pgWbDrawing) return;
+      pgWbDrawing = false;
+      try {
+        if (pgWbCanvas.releasePointerCapture) pgWbCanvas.releasePointerCapture(e.pointerId);
+      } catch (err) { }
+      pgWbScheduleSave();
+    }
+
+    // ---------- resize: keep the drawing, rescale the backing store ----------
+    function pgWbResize() {
+      if (pgWbResizeTimer) clearTimeout(pgWbResizeTimer);
+      pgWbResizeTimer = setTimeout(function () {
+        pgWbResizeTimer = null;
+        var snap = null;
+        if (pgWbReady) {
+          try { snap = pgWbCanvas.toDataURL('image/png'); } catch (err) { snap = null; }
+        }
+        if (!snap) snap = pgWbRead();
+        pgWbSetupCanvas();
+        pgWbDrawSrc(snap);
+      }, 250);
+    }
+
+    // ---------- tools row ----------
+    var pgWbTools = hwEl('div', 'pg-wb-tools');
+    pgWbWrap.appendChild(pgWbTools);
+
+    function pgWbSwatches() {
+      for (var i = 0; i < pgWbColors.length; i++) {
+        pgWbColorBtns.push(pgWbMakeColorBtn(pgWbColors[i]));
+      }
+      pgWbSyncSwatches();
+    }
+
+    function pgWbMakeColorBtn(colour) {
+      var b = hwEl('button', 'pg-sw', '');
+      b.type = 'button';
+      b.title = 'Pen colour ' + colour;
+      b.style.background = colour;
+      b.onclick = function () {
+        pgWbColor = colour;
+        pgWbSyncSwatches();
+        pgWbApplyPen();
+      };
+      pgWbTools.appendChild(b);
+      return b;
+    }
+
+    function pgWbSyncSwatches() {
+      for (var i = 0; i < pgWbColorBtns.length; i++) {
+        var on = pgWbColors[i] === pgWbColor;
+        pgWbColorBtns[i].className = on ? 'pg-sw on' : 'pg-sw';
+      }
+    }
+
+    function pgWbMakeSizeBtn(size) {
+      var b = hwEl('button', 'pg-sw', '');
+      b.type = 'button';
+      b.title = 'Pen size ' + size + ' pixels';
+      b.style.width = size + 'px';
+      b.style.height = size + 'px';
+      b.onclick = function () {
+        pgWbSize = size;
+        pgWbSyncSizes();
+        pgWbApplyPen();
+      };
+      pgWbTools.appendChild(b);
+      return b;
+    }
+
+    function pgWbSyncSizes() {
+      for (var i = 0; i < pgWbSizeBtns.length; i++) {
+        var on = pgWbSizes[i] === pgWbSize;
+        pgWbSizeBtns[i].className = on ? 'pg-sw on' : 'pg-sw';
+      }
+    }
+
+    pgWbSwatches();
+    for (var si = 0; si < pgWbSizes.length; si++) pgWbSizeBtns.push(pgWbMakeSizeBtn(pgWbSizes[si]));
+    pgWbSyncSizes();
+
+    // ---------- save PNG ----------
+    var pgWbSaveBtn = hwEl('button', 'pg-btn', 'Save PNG');
+    pgWbSaveBtn.type = 'button';
+    pgWbSaveBtn.onclick = function () {
+      if (!pgWbReady) return;
+      var data = pgWbCanvas.toDataURL('image/png');
+      var a = document.createElement('a');
+      a.href = data;
+      a.download = 'whiteboard.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+    pgWbTools.appendChild(pgWbSaveBtn);
+
+    // ---------- clear (two-click confirm, no alert/confirm) ----------
+    var pgWbClearBtn = hwEl('button', 'pg-btn warn', 'Clear');
+    pgWbClearBtn.type = 'button';
+
+    function pgWbDisarmClear() {
+      if (pgWbArmTimer) {
+        clearTimeout(pgWbArmTimer);
+        pgWbArmTimer = null;
+      }
+      pgWbClearBtn.innerHTML = '';
+      pgWbClearBtn.appendChild(document.createTextNode('Clear'));
+    }
+
+    pgWbClearBtn.onclick = function () {
+      var label = pgWbClearBtn.textContent || '';
+      if (label.indexOf('Sure') === -1) {
+        pgWbClearBtn.innerHTML = '';
+        pgWbClearBtn.appendChild(document.createTextNode('Sure?'));
+        if (pgWbArmTimer) clearTimeout(pgWbArmTimer);
+        pgWbArmTimer = setTimeout(function () {
+          pgWbArmTimer = null;
+          pgWbDisarmClear();
+        }, 4000);
+        return;
+      }
+      pgWbDisarmClear();
+      pgWbCancelSave();
+      pgWbClearStored();
+      if (pgWbReady) pgWbCtx.clearRect(0, 0, pgWbCssW, pgWbCssH);
+    };
+    pgWbTools.appendChild(pgWbClearBtn);
+
+    // ---------- canvas ----------
+    pgWbCanvas = hwEl('canvas', 'pg-wb-canvas', '');
+    pgWbCanvas.style.display = 'block';
+    pgWbCanvas.style.width = '100%';
+    pgWbCanvas.style.height = pgWbHeight + 'px';
+    pgWbCanvas.style.touchAction = 'none';
+    pgWbWrap.appendChild(pgWbCanvas);
+
+    pgWbSetupCanvas();
+    pgWbDrawSrc(pgWbRead());
+
+    pgWbCanvas.addEventListener('pointerdown', pgWbDown, false);
+    pgWbCanvas.addEventListener('pointermove', pgWbMove, false);
+    pgWbCanvas.addEventListener('pointerup', pgWbUp, false);
+    pgWbCanvas.addEventListener('pointercancel', pgWbCancel, false);
+    window.addEventListener('resize', pgWbResize, false);
+
+    // ---------- teardown ----------
+    return function () {
+      pgWbCancelSave();
+      if (pgWbResizeTimer) {
+        clearTimeout(pgWbResizeTimer);
+        pgWbResizeTimer = null;
+      }
+      if (pgWbArmTimer) {
+        clearTimeout(pgWbArmTimer);
+        pgWbArmTimer = null;
+      }
+      pgWbDrawing = false;
+      pgWbReady = false;
+      if (pgWbCanvas) {
+        pgWbCanvas.removeEventListener('pointerdown', pgWbDown, false);
+        pgWbCanvas.removeEventListener('pointermove', pgWbMove, false);
+        pgWbCanvas.removeEventListener('pointerup', pgWbUp, false);
+        pgWbCanvas.removeEventListener('pointercancel', pgWbCancel, false);
+      }
+      window.removeEventListener('resize', pgWbResize, false);
+    };
+  };
+
+  // ====== END APP PAGES ======
 
   function hwRenderApps() {
     const host = el('hw-apps');
@@ -2764,19 +5484,46 @@
     });
   }
 
-  // Blank page for now: title + a way back. Each app gets its content built here next.
+  // Open an app: build its page if one is registered, otherwise say so plainly rather
+  // than showing a blank box.
   function hwOpenApp(a) {
-    const page = el('hw-page'), apps = el('hw-apps');
-    if (!page || !apps) return;
+    const page = el('hw-page'), apps = el('hw-apps'), body = el('hw-page-body');
+    if (!page || !apps || !body) return;
+    // leaving the previous page: run its teardown so timers stop
+    if (hwCurrentApp && HW_TEARDOWN[hwCurrentApp]) {
+      try { HW_TEARDOWN[hwCurrentApp](); } catch (e) {}
+      delete HW_TEARDOWN[hwCurrentApp];
+    }
+    hwCurrentApp = a.id;
     if (el('hw-page-title')) el('hw-page-title').textContent = a.name;
-    const body = el('hw-page-body');
-    if (body) body.textContent = a.note;
+    body.innerHTML = '';
+    body.classList.toggle('plain', !HW_PAGE[a.id]);
+    // Make the page visible BEFORE running its render function: a hidden element reports
+    // clientWidth/clientHeight of 0, and any page that sizes itself to its container
+    // (the whiteboard canvas is the one) would measure 0 and fall back to a bad default.
     apps.style.display = 'none';
     page.classList.add('on');
+    const render = HW_PAGE[a.id];
+    if (render) {
+      try {
+        const teardown = render(body);
+        if (typeof teardown === 'function') HW_TEARDOWN[a.id] = teardown;
+      } catch (e) {
+        console.error('page ' + a.id, e);
+        body.textContent = 'This page failed to load: ' + e.message;
+      }
+    } else {
+      body.textContent = a.note;
+    }
   }
 
   function hwShowApps() {
     const page = el('hw-page'), apps = el('hw-apps');
+    if (hwCurrentApp && HW_TEARDOWN[hwCurrentApp]) {
+      try { HW_TEARDOWN[hwCurrentApp](); } catch (e) {}
+      delete HW_TEARDOWN[hwCurrentApp];
+    }
+    hwCurrentApp = null;
     if (page) page.classList.remove('on');
     if (apps) apps.style.display = '';
   }
@@ -2825,30 +5572,10 @@
       if (dy < 0) hwSet(true);          // swipe up -> expand
       else hwSet(false);                // swipe down -> collapse
     }, { passive: true });
-    // Trackpads and mice: wheel up/down over the home background does the same thing,
-    // debounced so one flick is one toggle.
-    let wheelLock = 0;
-    window.addEventListener('wheel', function (e) {
-      if (!document.body.classList.contains('home')) return;
-      if (vcOpenLike()) return;
-      const t = e.target;
-      if (t && t.closest && t.closest('input, textarea, #sp-player, #sc-window, #vc-panel')) return;
-      if (Math.abs(e.deltaY) < 24 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      const inWindow = t && t.closest && t.closest('#hw-window');
-      const now = Date.now();
-      if (inWindow) {
-        // let the window scroll; only a downward flick at the top dismisses it
-        if (e.deltaY > 0 && hwScrollerTop()) {
-          if (now < wheelLock) return;
-          wheelLock = now + 700;
-          hwSet(false);
-        }
-        return;
-      }
-      if (now < wheelLock) return;
-      wheelLock = now + 700;
-      hwSet(e.deltaY < 0);
-    }, { passive: true });
+
+    // The wheel/trackpad scroll is deliberately NOT wired to expand/collapse: it is easy
+    // to trigger by accident and it fights the window's own scrolling. Expand and
+    // collapse are swipe, drag and the arrow keys only.
 
     // ---- mouse / trackpad DRAG ----
     // Press on the home background and drag up or down, the same gesture a touch screen
