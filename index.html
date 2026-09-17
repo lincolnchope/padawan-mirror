@@ -728,6 +728,45 @@
     font-variant-numeric: tabular-nums; text-align: right; }
   .pg-big { font-size: 2rem; font-weight: 700; color: var(--text);
     font-variant-numeric: tabular-nums; line-height: 1.1; }
+  /* ---- medications (rebuilt from the previous mirror) ----
+     Bigger rows and round buttons, because the count is tapped often. The count itself
+     is click-to-type as well as +/- steppable: typing the real number beats clicking
+     + twelve times. */
+  .pg-med-row {
+    padding: 18px 20px; border-radius: 16px; gap: 18px;
+  }
+  .pg-med-name { font-size: 1.35rem; font-weight: 700; color: var(--text); }
+  .pg-med-dose { font-size: 1rem; color: var(--muted); margin-top: 3px; }
+  .pg-med-count { display: flex; align-items: center; gap: 14px; flex: 0 0 auto; }
+  .pg-med-num {
+    font-size: 2.4rem; font-weight: 700; color: var(--accent);
+    font-variant-numeric: tabular-nums; min-width: 2.4em; text-align: center;
+    cursor: pointer; border-radius: 10px; padding: 2px 6px;
+  }
+  .pg-med-num:hover { background: rgba(110,231,183,.12); }
+  .pg-med-input {
+    font-size: 2.4rem; font-weight: 700; color: var(--accent);
+    background: rgba(0,0,0,.28); border: 1px solid rgba(110,231,183,.5);
+    border-radius: 10px; padding: 2px 6px; text-align: center; width: 2.6em;
+    font-family: inherit;
+  }
+  /* .pg-btn.pg-med-btn (not just .pg-med-btn): .pg-btn is declared later in this sheet,
+     so a single-class rule here would lose the cascade and keep its 22px radius. */
+  .pg-btn.pg-med-btn {
+    width: 56px; height: 56px; border-radius: 50%; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8rem; line-height: 1;
+  }
+  /* the cigarettes row reads as a different thing at a glance */
+  .pg-cig { border-color: rgba(255,160,120,.5); background: rgba(255,150,110,.07); }
+  .pg-cig .pg-med-name { color: #ffb089; }
+  .pg-cig .pg-med-num, .pg-cig .pg-med-input { color: #ffb089; }
+  .pg-cig .pg-btn.pg-med-btn {
+    background: rgba(255,150,110,.16); border-color: rgba(255,150,110,.45); color: #ffb089;
+  }
+  .pg-med-note { font-size: .92rem; color: var(--muted); margin-top: 2px; }
+  .pg-med-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 8px; }
+
   .pg-btn {
     flex: 0 0 auto; height: 44px; padding: 0 16px; border-radius: 22px;
     background: rgba(110,231,183,.16); border: 1px solid rgba(110,231,183,.42);
@@ -3122,155 +3161,200 @@
   };
 
   // ---- meds ----
-  // ---- meds ----
+  // Rebuilt from the previous mirror, which had two things this page had lost:
+  //   1. the count is click-to-type, not just +/- (typing 12 beats tapping + twelve times)
+  //   2. a cigarettes counter, kept as its own tinted row
+  // Counts persist per name under padawan_meds_v1, so adding a medication later does not
+  // wipe the others.
   HW_PAGE['meds'] = function (host) {
     host.innerHTML = '';
 
     var pgMedsKey = 'padawan_meds_v1';
     var pgMedsResetTimer = null;
+    var pgMedsAlive = true;
 
-    var pgMedsList = [
-      { name: 'Concerta', dose: '36mg at 8am' },
-      { name: 'Fluoxetine', dose: '40mg at 8am' },
-      { name: 'Olanzapine', dose: '30mg at 6pm' }
+    // edit this list: { key } is what the stored count is filed under
+    var pgMedsMeds = [
+      { key: 'Concerta',   name: 'Concerta',   dose: '36mg at 8am', note: 'taken' },
+      { key: 'Fluoxetine', name: 'Fluoxetine', dose: '40mg at 8am', note: 'taken' },
+      { key: 'Olanzapine', name: 'Olanzapine', dose: '30mg at 6pm', note: 'taken' }
     ];
-
-    function pgMedsDefaults() {
-      var d = {};
-      for (var i = 0; i < pgMedsList.length; i++) d[pgMedsList[i].name] = 0;
-      return d;
-    }
-
-    function pgMedsCounts() {
-      var raw = hwLS.get(pgMedsKey, null);
-      var out = pgMedsDefaults();
-      if (raw && typeof raw === 'object') {
-        for (var i = 0; i < pgMedsList.length; i++) {
-          var n = pgMedsList[i].name;
-          var v = Number(raw[n]);
-          if (v === v && v >= 0) out[n] = Math.floor(v);
-        }
-      }
-      return out;
-    }
-
-    var pgMedsData = pgMedsCounts();
-
-    function pgMedsSave() {
-      hwLS.set(pgMedsKey, pgMedsData);
-    }
+    var pgMedsCigKey = 'Cigarettes';
 
     var pgMedsWrap = hwEl('div', 'pg-wrap');
     host.appendChild(pgMedsWrap);
 
     var pgMedsRows = hwEl('div', 'pg-wrap');
+    pgMedsRows.style.gap = '12px';
     pgMedsWrap.appendChild(pgMedsRows);
 
-    // ---- reset all (two-click confirm) ----
+    var pgMedsFoot = hwEl('div', 'pg-med-foot');
+    var pgMedsHint = hwEl('div', 'pg-med-note',
+      'Tap a number to type it. Counts are saved as you go.');
+    pgMedsFoot.appendChild(pgMedsHint);
+
     var pgMedsResetBtn = hwEl('button', 'pg-btn warn', 'Reset all');
     pgMedsResetBtn.type = 'button';
+    pgMedsFoot.appendChild(pgMedsResetBtn);
+    pgMedsWrap.appendChild(pgMedsFoot);
 
-    function pgMedsArmReset() {
-      pgMedsResetBtn.innerHTML = '';
-      pgMedsResetBtn.appendChild(document.createTextNode('Sure?'));
-      pgMedsResetBtn.className = 'pg-btn warn';
-      if (pgMedsResetTimer) clearTimeout(pgMedsResetTimer);
-      pgMedsResetTimer = setTimeout(function () {
-        pgMedsResetTimer = null;
-        pgMedsResetBtn.innerHTML = '';
-        pgMedsResetBtn.appendChild(document.createTextNode('Reset all'));
-      }, 4000);
+    // ---------- storage ----------
+    function pgMedsBlank() {
+      var d = {};
+      for (var i = 0; i < pgMedsMeds.length; i++) d[pgMedsMeds[i].key] = 0;
+      d[pgMedsCigKey] = 0;
+      return d;
     }
 
-    function pgMedsDisarmReset() {
-      if (pgMedsResetTimer) {
-        clearTimeout(pgMedsResetTimer);
-        pgMedsResetTimer = null;
+    function pgMedsRead() {
+      var raw = hwLS.get(pgMedsKey, null);
+      var out = pgMedsBlank();
+      if (raw && typeof raw === 'object') {
+        for (var k in out) {
+          if (!Object.prototype.hasOwnProperty.call(out, k)) continue;
+          var v = Number(raw[k]);
+          if (v === v && v >= 0) out[k] = Math.floor(v);
+        }
       }
-      pgMedsResetBtn.innerHTML = '';
-      pgMedsResetBtn.appendChild(document.createTextNode('Reset all'));
+      return out;
     }
 
-    pgMedsResetBtn.onclick = function () {
-      var label = pgMedsResetBtn.textContent || '';
-      if (label.indexOf('Sure') === -1) {
-        pgMedsArmReset();
-        return;
-      }
-      pgMedsDisarmReset();
-      pgMedsData = pgMedsDefaults();
-      pgMedsSave();
-      pgMedsRenderAll();
-    };
+    var pgMedsData = pgMedsRead();
 
-    // ---- one row per medication ----
-    var pgMedsRefs = [];
-
-    function pgMedsRenderAll() {
-      for (var i = 0; i < pgMedsRefs.length; i++) {
-        var ref = pgMedsRefs[i];
-        var n = pgMedsData[ref.name] || 0;
-        ref.big.innerHTML = '';
-        ref.big.appendChild(document.createTextNode(String(n)));
-        ref.subCount.innerHTML = '';
-        ref.subCount.appendChild(document.createTextNode('taken ' + n + ' times'));
-        ref.minus.disabled = n <= 0;
-      }
+    function pgMedsSave() {
+      hwLS.set(pgMedsKey, pgMedsData);
     }
 
-    function pgMedsBuildRow(med) {
-      var row = hwEl('div', 'pg-row');
+    // ---------- one row ----------
+    function pgMedsRow(key, name, dose, isCig) {
+      var row = hwEl('div', 'pg-row pg-med-row' + (isCig ? ' pg-cig' : ''));
 
       var main = hwEl('div', 'pg-main');
-      main.appendChild(hwEl('div', 'pg-title', med.name));
-      main.appendChild(hwEl('div', 'pg-sub', med.dose));
-      var subCount = hwEl('div', 'pg-sub', 'taken 0 times');
-      main.appendChild(subCount);
+      main.appendChild(hwEl('div', 'pg-med-name', name));
+      main.appendChild(hwEl('div', 'pg-med-dose', dose));
+      // a SEPARATE note line: the dosage above must stay visible
+      var note = hwEl('div', 'pg-med-note', '');
+      main.appendChild(note);
       row.appendChild(main);
 
-      var side = hwEl('div', 'pg-side');
-      var minus = hwEl('button', 'pg-btn', '-');
+      var count = hwEl('div', 'pg-med-count');
+
+      var minus = hwEl('button', 'pg-btn pg-med-btn', '\u2212');
       minus.type = 'button';
-      var big = hwEl('div', 'pg-big', '0');
-      var plus = hwEl('button', 'pg-btn', '+');
+      minus.title = isCig ? 'One fewer left' : 'One fewer taken';
+
+      var num = hwEl('div', 'pg-med-num', '0');
+      num.setAttribute('role', 'button');
+      num.setAttribute('tabindex', '0');
+      num.title = 'Tap to type the number';
+
+      var plus = hwEl('button', 'pg-btn pg-med-btn', '+');
       plus.type = 'button';
+      plus.title = isCig ? 'One more left' : 'One more taken';
 
-      side.appendChild(minus);
-      side.appendChild(big);
-      side.appendChild(plus);
-      row.appendChild(side);
+      count.appendChild(minus);
+      count.appendChild(num);
+      count.appendChild(plus);
+      row.appendChild(count);
 
-      function bump(delta) {
-        var n = pgMedsData[med.name] || 0;
-        n = n + delta;
-        if (n < 0) n = 0;
-        pgMedsData[med.name] = n;
+      function get() { return pgMedsData[key] || 0; }
+
+      function set(v) {
+        v = Math.max(0, Math.floor(Number(v) || 0));
+        pgMedsData[key] = v;
         pgMedsSave();
-        pgMedsRenderAll();
+        refresh();
       }
 
-      minus.onclick = function () { bump(-1); };
-      plus.onclick = function () { bump(1); };
+      function refresh() {
+        if (!pgMedsAlive) return;
+        var n = get();
+        num.textContent = String(n);
+        minus.disabled = n <= 0;
+        note.textContent = isCig ? 'left' : noteFor(n);
+      }
 
-      pgMedsRefs.push({
-        name: med.name,
-        big: big,
-        subCount: subCount,
-        minus: minus
+      function noteFor(n) {
+        if (n === 0) return 'not taken yet';
+        if (n === 1) return 'taken once';
+        return 'taken ' + n + ' times';
+      }
+
+      // click-to-type: swap the readout for a number input, commit on blur/Enter
+      function beginEdit() {
+        if (!pgMedsAlive) return;
+        if (row.querySelector('.pg-med-input')) return;      // already editing
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.min = '0';
+        input.step = '1';
+        input.inputMode = 'numeric';
+        input.className = 'pg-med-input';
+        input.value = String(get());
+        num.style.display = 'none';
+        num.parentNode.insertBefore(input, num);
+        input.focus();
+        input.select();
+
+        var done = false;
+        function commit(useTyped) {
+          if (done) return;
+          done = true;
+          if (useTyped) set(parseInt(input.value, 10) || 0);
+          if (input.parentNode) input.parentNode.removeChild(input);
+          num.style.display = '';
+          refresh();
+        }
+
+        input.addEventListener('blur', function () { commit(true); });
+        input.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') { ev.preventDefault(); commit(true); }
+          if (ev.key === 'Escape') { ev.preventDefault(); commit(false); }
+        });
+      }
+
+      num.addEventListener('click', beginEdit);
+      num.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); beginEdit(); }
       });
 
+      minus.onclick = function () { set(get() - 1); };
+      plus.onclick = function () { set(get() + 1); };
+
       pgMedsRows.appendChild(row);
+      refresh();
       return row;
     }
 
-    for (var i = 0; i < pgMedsList.length; i++) {
-      pgMedsBuildRow(pgMedsList[i]);
+    for (var mi = 0; mi < pgMedsMeds.length; mi++) {
+      var m = pgMedsMeds[mi];
+      pgMedsRow(m.key, m.name, m.dose, false);
+    }
+    pgMedsRow(pgMedsCigKey, 'Cigarettes', 'left', true);
+
+    // ---------- reset all (two-click, no alert) ----------
+    function pgMedsDisarm() {
+      if (pgMedsResetTimer) { clearTimeout(pgMedsResetTimer); pgMedsResetTimer = null; }
+      pgMedsResetBtn.textContent = 'Reset all';
     }
 
-    pgMedsWrap.appendChild(pgMedsResetBtn);
-    pgMedsRenderAll();
+    pgMedsResetBtn.onclick = function () {
+      if (pgMedsResetBtn.textContent.indexOf('Sure') === -1) {
+        pgMedsResetBtn.textContent = 'Sure?';
+        if (pgMedsResetTimer) clearTimeout(pgMedsResetTimer);
+        pgMedsResetTimer = setTimeout(pgMedsDisarm, 4000);
+        return;
+      }
+      pgMedsDisarm();
+      pgMedsData = pgMedsBlank();
+      pgMedsSave();
+      // re-render the whole page so every row picks up the zeroed values
+      var page = document.getElementById('hw-page-body');
+      if (page) HW_PAGE['meds'](page);
+    };
 
     return function () {
+      pgMedsAlive = false;
       if (pgMedsResetTimer) clearTimeout(pgMedsResetTimer);
       pgMedsResetTimer = null;
     };
