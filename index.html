@@ -850,6 +850,120 @@
     border-radius: 14px;
   }
 
+  /* ---- referee coaching / assessment (built from the v1 page) ----
+     A quarter timer with two referee columns. You run the clock, note what each ref did
+     well and what needs work, and stamp each note with the game time it happened. Then
+     export the whole thing as a PDF.
+     Everything is in-memory only: it is a live assessment tool for one game, not a
+     record keeper, so closing the page discards it. Export before you leave. */
+  .ra-summary { display: flex; align-items: center; gap: 10px; }
+  .ra-summary .ra-date { flex: 1; color: var(--muted); font-size: .95rem; letter-spacing: .5px; }
+  .ra-pdf {
+    background: rgba(110,231,183,.16); border: 1px solid rgba(110,231,183,.4);
+    border-radius: 10px; color: var(--accent); cursor: pointer; font-family: inherit;
+    font-size: .9rem; letter-spacing: 1px; text-transform: uppercase; padding: 12px 20px;
+    white-space: nowrap;
+  }
+  .ra-pdf:hover { background: rgba(110,231,183,.3); }
+  .ra-timer { text-align: center; padding: 0; }
+  .ra-clock {
+    font-size: 2.9rem; font-weight: 700; letter-spacing: 2px; color: #fff; line-height: 1;
+    font-variant-numeric: tabular-nums; text-shadow: 0 0 24px rgba(110,231,183,.45);
+  }
+  .ra-clock.running { color: var(--accent); }
+  .ra-clock.done { color: #ff5370; }
+  .ra-qlabel {
+    font-size: .85rem; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--accent); margin-top: 6px; font-weight: 700;
+  }
+  .ra-ctrl { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 8px; }
+  .ra-ctrl input {
+    width: 88px; background: rgba(255,255,255,.06); border: 1px solid var(--card-border);
+    border-radius: 10px; color: var(--text); font-family: inherit; font-size: 1.1rem;
+    font-weight: 600; text-align: center; padding: 10px 8px; outline: none; color-scheme: dark;
+  }
+  .ra-ctrl input:focus { border-color: rgba(110,231,183,.6); }
+  .ra-btn {
+    background: rgba(110,231,183,.16); border: 1px solid rgba(110,231,183,.4);
+    border-radius: 10px; color: var(--accent); cursor: pointer; font-family: inherit;
+    font-size: .9rem; letter-spacing: 1px; text-transform: uppercase; padding: 12px 22px;
+    font-weight: 700;
+  }
+  .ra-btn:hover { background: rgba(110,231,183,.3); }
+  .ra-btn:disabled { opacity: .4; cursor: default; }
+  .ra-btn.stop { background: rgba(255,83,112,.16); border-color: rgba(255,83,112,.4); color: #ff5370; }
+  .ra-btn.stop:hover { background: rgba(255,83,112,.3); }
+  .ra-quarters { display: flex; gap: 10px; margin-top: 8px; }
+  .ra-q {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 7px 5px; border: 1px solid var(--card-border); border-radius: 12px;
+    background: rgba(255,255,255,.03); cursor: pointer; color: var(--muted); font-size: .8rem;
+  }
+  .ra-q b { font-size: 1.1rem; color: var(--text); }
+  .ra-q .ra-qtime { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1em; }
+  .ra-q.active { border-color: rgba(110,231,183,.6); background: rgba(110,231,183,.14); color: var(--accent); }
+  .ra-q.active b { color: var(--accent); }
+  .ra-q.stamped { border-color: rgba(110,231,183,.5); background: rgba(110,231,183,.09); }
+  .ra-q.stamped .ra-qtime { color: var(--accent); }
+  .ra-cols { display: flex; gap: 14px; align-items: flex-start; }
+  .ra-col {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; padding: 10px;
+    border: 1px solid var(--card-border); border-radius: 12px; background: rgba(255,255,255,.03);
+  }
+  .ra-ref { display: flex; flex-direction: column; gap: 5px; }
+  .ra-ref label { font-size: .78rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  .ra-ref input {
+    background: rgba(255,255,255,.06); border: 1px solid var(--card-border); border-radius: 10px;
+    color: var(--text); font-family: inherit; font-size: 1.05rem; padding: 11px 12px; outline: none;
+  }
+  .ra-ref input:focus { border-color: rgba(110,231,183,.6); }
+  .ra-obs-col { display: flex; flex-direction: column; gap: 6px; }
+  .ra-obs-col h4 {
+    font-size: .8rem; letter-spacing: 1.5px; text-transform: uppercase; margin: 0 0 2px;
+    font-weight: 700;
+  }
+  .ra-obs-col.good h4 { color: var(--accent); }
+  .ra-obs-col.bad h4 { color: #ff5370; }
+  .ra-row { display: flex; align-items: center; gap: 8px; }
+  .ra-row input[type=text] {
+    flex: 1; min-width: 0; background: rgba(255,255,255,.06); border: 1px solid var(--card-border);
+    border-radius: 10px; color: var(--text); font-family: inherit; font-size: 1rem;
+    padding: 8px 10px; outline: none;
+  }
+  .ra-row input[type=text]:focus { border-color: rgba(110,231,183,.6); }
+  .ra-stamp {
+    flex-shrink: 0; background: rgba(110,231,183,.1); border: 1px solid rgba(110,231,183,.3);
+    border-radius: 8px; color: var(--muted); font-size: .88rem; font-variant-numeric: tabular-nums;
+    padding: 7px 9px; cursor: pointer; min-width: 96px; font-family: inherit;
+    user-select: none;
+  }
+  .ra-stamp:hover { background: rgba(110,231,183,.25); color: var(--accent); }
+  .ra-stamp.stamped { color: var(--accent); border-color: rgba(110,231,183,.6); }
+  .ra-row.bad .ra-stamp { background: rgba(255,83,112,.08); border-color: rgba(255,83,112,.3); }
+  .ra-row.bad .ra-stamp.stamped { color: #ff5370; border-color: rgba(255,83,112,.6); }
+  .ra-row.bad .ra-stamp:hover { color: #ff5370; background: rgba(255,83,112,.18); }
+  .ra-hint { color: var(--muted); font-size: .92rem; }
+
+  /* the PDF is produced by window.print(), so give it its own print stylesheet */
+  #print-results { display: none; }
+  @media print {
+    body { background: #fff !important; color: #111 !important; overflow: visible !important; }
+    #stage, #hw-window, #td-window, #sp-player, #spotify-pill, #vc-panel { display: none !important; }
+    #print-results { display: block !important; }
+    #print-results h1 { font-size: 22px; margin-bottom: 4px; }
+    #print-results h2 { font-size: 16px; margin: 18px 0 6px; border-bottom: 1px solid #ccc; padding-bottom: 3px; }
+    #print-results h3 { font-size: 15px; margin: 14px 0 4px; }
+    #print-results h4 { margin: 10px 0 3px; font-size: 13px; }
+    #print-results h4.good { color: #0a7d34; }
+    #print-results h4.bad { color: #c62828; }
+    #print-results p.meta { margin: 2px 0; font-size: 14px; }
+    #print-results table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    #print-results th, #print-results td { border: 1px solid #999; padding: 6px 9px; text-align: left; }
+    #print-results ul { margin: 4px 0; padding-left: 20px; }
+    #print-results li { margin: 3px 0; font-size: 14px; }
+    #print-results .ts { color: #555; font-size: 12px; }
+  }
+
   /* ---- item detail window ----
      Opened by clicking a card on the To Do board. Same shape as the Spotify player
      window: a blurred backdrop plus a centred panel, so the mirror reads consistently
@@ -4056,6 +4170,7 @@
     { group: 'Work', apps: [
       { id: 'school',    name: 'School',    note: 'SACs and exams with dates' },
       { id: 'referee',   name: 'Referee',   note: 'Coaching, reffing, supervising and the rules model' },
+      { id: 'coaching',  name: 'Coaching',  note: 'Quarter-by-quarter referee assessment' },
     ]},
     { group: 'Tools', apps: [
       { id: 'news',      name: 'News',      note: 'Headlines, refreshed every ten minutes' },
@@ -6259,6 +6374,353 @@
 
     return function () {
       clearInterval(pgRefereeTimer);
+    };
+  };
+
+  // ---- coaching (referee assessment) ----
+  // Built from the previous mirror's Coaching page, which is a live assessment tool for
+  // one game rather than a record keeper:
+  //
+  //   - a per-quarter timer (default 9 minutes, adjustable) you start and stop as the
+  //     game runs, stamping each quarter's real start and end time
+  //   - two referee columns, each with a Good and a Needs-work list
+  //   - every note can be stamped with the game time it happened, so the feedback comes
+  //     with evidence instead of "you were sloppy in the second half"
+  //   - Export PDF prints the whole assessment, referee by referee, quarter by quarter
+  //
+  // NOTES ARE IN MEMORY ONLY. There is no backend for this, so leaving the page discards
+  // everything - the hint at the bottom says so. Export before you navigate away.
+  HW_PAGE['coaching'] = function (host) {
+    host.innerHTML = '';
+
+    var PGRA_QUARTERS = 4;
+    var PGRA_REFEREES = 2;
+
+    var wrap = hwEl('div', 'pg-wrap');
+    wrap.style.gap = '11px';
+    host.appendChild(wrap);
+
+    // ---------- summary row: date + export ----------
+    var summary = hwEl('div', 'ra-summary');
+    var dateEl = hwEl('span', 'ra-date', '');
+    summary.appendChild(dateEl);
+    var pdfBtn = hwEl('button', 'ra-pdf', 'Export PDF');
+    pdfBtn.type = 'button';
+    summary.appendChild(pdfBtn);
+    wrap.appendChild(summary);
+
+    // ---------- timer ----------
+    var timerBox = hwEl('div', 'ra-timer');
+    var clockEl = hwEl('div', 'ra-clock', '09:00');
+    timerBox.appendChild(clockEl);
+    var qLabelEl = hwEl('div', 'ra-qlabel', 'Quarter 1');
+    timerBox.appendChild(qLabelEl);
+
+    var ctrl = hwEl('div', 'ra-ctrl');
+    var minInput = hwEl('input');
+    minInput.type = 'number';
+    minInput.value = '9';
+    minInput.min = '1';
+    minInput.max = '60';
+    minInput.title = 'Minutes per quarter';
+    minInput.inputMode = 'numeric';
+    minInput.style.colorScheme = 'dark';
+    ctrl.appendChild(minInput);
+    var minLabel = hwEl('span', 'ra-hint', 'min');
+    ctrl.appendChild(minLabel);
+    var startBtn = hwEl('button', 'ra-btn', 'Start');
+    startBtn.type = 'button';
+    var stopBtn = hwEl('button', 'ra-btn stop', 'Stop');
+    stopBtn.type = 'button';
+    stopBtn.disabled = true;
+    var resetBtn = hwEl('button', 'ra-btn', 'Reset');
+    resetBtn.type = 'button';
+    ctrl.appendChild(startBtn);
+    ctrl.appendChild(stopBtn);
+    ctrl.appendChild(resetBtn);
+    timerBox.appendChild(ctrl);
+
+    var qRow = hwEl('div', 'ra-quarters');
+    var qTiles = [];
+    for (var qi = 1; qi <= PGRA_QUARTERS; qi++) {
+      var tile = hwEl('div', 'ra-q' + (qi === 1 ? ' active' : ''));
+      tile.setAttribute('data-q', String(qi));
+      tile.appendChild(hwEl('b', null, 'Q' + qi));
+      tile.appendChild(hwEl('span', 'ra-qtime', '--:--'));
+      qRow.appendChild(tile);
+      qTiles.push(tile);
+    }
+    timerBox.appendChild(qRow);
+    wrap.appendChild(timerBox);
+
+    var hint = hwEl('div', 'ra-hint',
+      'Notes live in this page only - export a PDF before you leave.');
+    wrap.appendChild(hint);
+
+    // ---------- referee columns ----------
+    var cols = hwEl('div', 'ra-cols');
+    wrap.appendChild(cols);
+
+    // ---------- state ----------
+    var totalSeconds = 9 * 60;
+    var remaining = totalSeconds;
+    var running = false;
+    var timerId = null;
+    var currentQuarter = 1;
+    var quarters = {};
+    for (var q = 1; q <= PGRA_QUARTERS; q++) quarters[q] = { start: null, end: null };
+
+    // raState[ref][quarter] = { good: [{t,s}], bad: [{t,s}] }
+    var raState = {};
+    for (var r = 1; r <= PGRA_REFEREES; r++) raState[r] = { name: '', q: {} };
+
+    function mkRows() { return [{ t: '', s: null }, { t: '', s: null }, { t: '', s: null }]; }
+
+    function qState(ref, quarter) {
+      var qs = raState[ref].q;
+      if (!qs[quarter]) qs[quarter] = { good: mkRows(), bad: mkRows() };
+      return qs[quarter];
+    }
+
+    function fmt(sec) {
+      var m = Math.floor(sec / 60), s = sec % 60;
+      return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function renderClock() {
+      clockEl.textContent = fmt(remaining);
+      clockEl.className = 'ra-clock' + (running ? ' running' : (remaining <= 0 ? ' done' : ''));
+      qLabelEl.textContent = 'Quarter ' + currentQuarter;
+    }
+
+    function renderTiles() {
+      for (var i = 0; i < qTiles.length; i++) {
+        var t = qTiles[i];
+        var num = Number(t.getAttribute('data-q'));
+        t.className = 'ra-q' + (num === currentQuarter ? ' active' : '')
+          + ((quarters[num].start || quarters[num].end) ? ' stamped' : '');
+        var s = quarters[num].start, e = quarters[num].end;
+        var stamp = t.querySelector('.ra-qtime');
+        stamp.textContent = (s && e) ? s + '\u2013' + e : (s ? s + '\u2013' : '--:--');
+      }
+    }
+
+    function stampQuarterStart() {
+      if (quarters[currentQuarter].start === null) quarters[currentQuarter].start = fmt(remaining);
+    }
+    function stampQuarterEnd() {
+      if (quarters[currentQuarter].end === null) quarters[currentQuarter].end = fmt(remaining);
+    }
+
+    // ---------- observations ----------
+    function renderObs() {
+      cols.innerHTML = '';
+      for (var ref = 1; ref <= PGRA_REFEREES; ref++) {
+        var st = qState(ref, currentQuarter);
+        var col = hwEl('div', 'ra-col');
+
+        var refBox = hwEl('div', 'ra-ref');
+        refBox.appendChild(hwEl('label', null, 'Referee ' + ref));
+        var nameIn = hwEl('input');
+        nameIn.type = 'text';
+        nameIn.placeholder = 'Name...';
+        nameIn.value = raState[ref].name;
+        (function (refNum, input) {
+          input.addEventListener('input', function () { raState[refNum].name = input.value; });
+        })(ref, nameIn);
+        refBox.appendChild(nameIn);
+        col.appendChild(refBox);
+
+        var kinds = [['good', 'Good'], ['bad', 'Needs work']];
+        for (var k = 0; k < kinds.length; k++) {
+          var kind = kinds[k][0];
+          var oc = hwEl('div', 'ra-obs-col ' + kind);
+          oc.appendChild(hwEl('h4', null, kinds[k][1]));
+
+          for (var ri = 0; ri < st[kind].length; ri++) {
+            (function (rowObj, kindName) {
+              var row = hwEl('div', 'ra-row' + (kindName === 'bad' ? ' bad' : ''));
+              var inp = hwEl('input');
+              inp.type = 'text';
+              inp.placeholder = kindName === 'good'
+                ? 'What was called well...' : 'What to improve...';
+              inp.value = rowObj.t;
+              inp.addEventListener('input', function () { rowObj.t = inp.value; });
+              row.appendChild(inp);
+
+              // stamp the note with the game time it happened
+              var stamp = hwEl('button', 'ra-stamp' + (rowObj.s ? ' stamped' : ''), rowObj.s || '--:--');
+              stamp.type = 'button';
+              stamp.title = 'Stamp with the current game time';
+              stamp.addEventListener('click', function () {
+                rowObj.s = 'Q' + currentQuarter + ' ' + fmt(remaining);
+                stamp.textContent = rowObj.s;
+                stamp.className = 'ra-stamp stamped';
+              });
+              row.appendChild(stamp);
+
+              oc.appendChild(row);
+            })(st[kind][ri], kind);
+          }
+          col.appendChild(oc);
+        }
+        cols.appendChild(col);
+      }
+    }
+
+    // ---------- timer controls ----------
+    function stopTimer() {
+      if (!running) return;
+      running = false;
+      if (timerId) { clearInterval(timerId); timerId = null; }
+      stampQuarterEnd();
+      renderTiles();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      minInput.disabled = false;
+      renderClock();
+    }
+
+    startBtn.onclick = function () {
+      if (running) return;
+      if (remaining <= 0) remaining = totalSeconds;
+      running = true;
+      stampQuarterStart();
+      renderTiles();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      minInput.disabled = true;
+      renderClock();
+      timerId = setInterval(function () {
+        remaining -= 1;
+        if (remaining <= 0) { remaining = 0; stopTimer(); }
+        renderClock();
+      }, 1000);
+    };
+
+    stopBtn.onclick = stopTimer;
+
+    resetBtn.onclick = function () {
+      running = false;
+      if (timerId) { clearInterval(timerId); timerId = null; }
+      remaining = totalSeconds;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      minInput.disabled = false;
+      renderClock();
+    };
+
+    minInput.addEventListener('change', function () {
+      var m = parseInt(minInput.value, 10) || 9;
+      m = Math.min(60, Math.max(1, m));
+      minInput.value = String(m);
+      totalSeconds = m * 60;
+      if (!running) { remaining = totalSeconds; renderClock(); }
+    });
+
+    (function wireTiles() {
+      for (var i = 0; i < qTiles.length; i++) {
+        (function (tile) {
+          tile.addEventListener('click', function () {
+            if (running) return;                 // do not switch quarters mid-quarter
+            currentQuarter = Number(tile.getAttribute('data-q'));
+            renderTiles();
+            renderObs();
+            renderClock();
+          });
+        })(qTiles[i]);
+      }
+    })();
+
+    // ---------- date ----------
+    (function setDate() {
+      var now = new Date();
+      var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      var months = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+      dateEl.textContent = days[now.getDay()] + ' ' + now.getDate() + ' ' + months[now.getMonth()]
+        + ' ' + now.getFullYear();
+    })();
+
+    // ---------- PDF export ----------
+    // window.print() cannot print the panel as-is (dark theme, fixed positioning), so the
+    // assessment is rebuilt into a light-theme #print-results block that only exists in
+    // print. The @media print CSS in the sheet hides the mirror and shows this instead.
+    var printRoot = document.getElementById('print-results');
+    if (!printRoot) {
+      printRoot = hwEl('div');
+      printRoot.id = 'print-results';
+      document.body.appendChild(printRoot);
+    }
+
+    pdfBtn.onclick = function () {
+      var r1 = raState[1].name || 'Referee 1';
+      var r2 = raState[2].name || 'Referee 2';
+
+      var qRows = '';
+      for (var qq = 1; qq <= PGRA_QUARTERS; qq++) {
+        qRows += '<tr><td>Quarter ' + qq + '</td><td>'
+          + (quarters[qq].start || '--:--') + '</td><td>'
+          + (quarters[qq].end || '--:--') + '</td></tr>';
+      }
+
+      function esc(s) {
+        return String(s === null || s === undefined ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      function refBlock(refNum, name) {
+        var html = '<h3>' + esc(name) + '</h3>';
+        for (var qq = 1; qq <= PGRA_QUARTERS; qq++) {
+          var st = raState[refNum].q[qq];
+          if (!st) continue;
+          var hasGood = false, hasBad = false;
+          for (var i = 0; i < st.good.length; i++) if (st.good[i].t || st.good[i].s) hasGood = true;
+          for (var j = 0; j < st.bad.length; j++) if (st.bad[j].t || st.bad[j].s) hasBad = true;
+          if (!hasGood && !hasBad) continue;
+
+          html += '<h4 class="good">Q' + qq + ' Good</h4><ul>';
+          for (var gi = 0; gi < st.good.length; gi++) {
+            var g = st.good[gi];
+            if (g.t || g.s) {
+              html += '<li>' + esc(g.t || '\u2014')
+                + (g.s ? ' <span class="ts">' + esc(g.s) + '</span>' : '') + '</li>';
+            }
+          }
+          html += '</ul>';
+
+          html += '<h4 class="bad">Q' + qq + ' Needs work</h4><ul>';
+          for (var bi = 0; bi < st.bad.length; bi++) {
+            var b = st.bad[bi];
+            if (b.t || b.s) {
+              html += '<li>' + esc(b.t || '\u2014')
+                + (b.s ? ' <span class="ts">' + esc(b.s) + '</span>' : '') + '</li>';
+            }
+          }
+          html += '</ul>';
+        }
+        return html;
+      }
+
+      printRoot.innerHTML = '<h1>Referee Assessment</h1>'
+        + '<p class="meta">' + esc(dateEl.textContent) + '</p>'
+        + '<h2>Quarters</h2><table><thead><tr><th>Period</th><th>Start</th><th>End</th></tr></thead><tbody>'
+        + qRows + '</tbody></table>'
+        + '<h2>Referee 1</h2>' + refBlock(1, r1)
+        + '<h2>Referee 2</h2>' + refBlock(2, r2);
+
+      window.print();
+      // clear it afterwards so a later print of something else cannot show stale notes
+      printRoot.innerHTML = '';
+    };
+
+    renderClock();
+    renderTiles();
+    renderObs();
+
+    return function () {
+      if (timerId) { clearInterval(timerId); timerId = null; }
+      running = false;
     };
   };
 
