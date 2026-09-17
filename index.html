@@ -948,7 +948,7 @@
   #print-results { display: none; }
   @media print {
     body { background: #fff !important; color: #111 !important; overflow: visible !important; }
-    #stage, #hw-window, #td-window, #sp-player, #spotify-pill, #vc-panel { display: none !important; }
+    #stage, #hw-window, #td-window, #sp-player, #spotify-pill { display: none !important; }
     #print-results { display: block !important; }
     #print-results h1 { font-size: 22px; margin-bottom: 4px; }
     #print-results h2 { font-size: 16px; margin: 18px 0 6px; border-bottom: 1px solid #ccc; padding-bottom: 3px; }
@@ -963,6 +963,37 @@
     #print-results li { margin: 3px 0; font-size: 14px; }
     #print-results .ts { color: #555; font-size: 12px; }
   }
+
+  /* ---- service health strip ----
+     Sits under the orb on home. One dot per backend; a red one is tappable to restart
+     it. Sized generously because this is a touch screen and the whole point is that you
+     can fix a dead backend from the mirror itself. */
+  #health-strip {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    justify-content: center; max-width: 92vw; z-index: 5;
+  }
+  body:not(.home) #health-strip { display: none; }
+  /* while a window is open the strip would clutter it */
+  body.hw-open #health-strip, body.sp-open #health-strip, body.td-open #health-strip { display: none; }
+  .hsvc {
+    display: flex; align-items: center; gap: 9px;
+    min-height: 46px; padding: 0 16px; border-radius: 23px;
+    background: rgba(8,20,13,.82); border: 1px solid var(--card-border);
+    color: var(--muted); font-family: inherit; font-size: .92rem;
+    cursor: default;
+  }
+  .hsvc .dot {
+    width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto;
+    background: var(--muted); box-shadow: 0 0 0 0 rgba(0,0,0,0);
+  }
+  .hsvc.up .dot { background: #00e676; }
+  .hsvc.down { border-color: rgba(255,83,112,.5); color: #ff9aae; cursor: pointer; }
+  .hsvc.down .dot { background: #ff5370; }
+  .hsvc.down:hover { background: rgba(255,83,112,.16); }
+  .hsvc.busy .dot { background: #f59e0b; }
+  .hsvc.fixed .dot { background: #00e676; }
+  .hsvc .lbl { white-space: nowrap; }
 
   /* ---- item detail window ----
      Opened by clicking a card on the To Do board. Same shape as the Spotify player
@@ -1263,51 +1294,6 @@
   /* when voice chat is ON: orb shrinks and tucks to the left, whole orb visible */
 
   /* ============ HOME voice-chat transcript panel ============ */
-  #vc-panel {
-    position: fixed; display: none; flex-direction: column;
-    right: 4vw; top: 24vh; bottom: 24vh; width: 58vw; max-width: 720px;
-    background: var(--card); border: 1px solid var(--card-border);
-    border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,.4);
-    overflow: hidden; opacity: 0; transform: translateY(14px);
-    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
-  }
-  body.home.vc-open #vc-panel { display: flex; opacity: 1; transform: none; }
-  body.vc-open #vc-panel { display: flex; opacity: 1; transform: none; }
-  #vc-head { display: flex; align-items: center; gap: 12px; padding: 14px 20px;
-    border-bottom: 1px solid var(--card-border); font-weight: 700; letter-spacing: 1px; font-size: 1rem; }
-  #vc-ind { width: 12px; height: 12px; border-radius: 50%; background: var(--orb-color); flex: 0 0 auto; }
-  #vc-ind.listening { background: #3b82f6; }
-  #vc-ind.thinking { background: #f59e0b; }
-  #vc-ind.error { background: #ef4444; }
-  #vc-state { color: var(--muted); font-weight: 500; letter-spacing: 2px; font-size: .8rem; }
-  #vc-scroll { flex: 1 1 auto; overflow-y: auto; padding: 16px 20px; display: flex;
-    flex-direction: column; gap: 10px; }
-  #vc-scroll .chat-msg.you { align-self: flex-end; border-bottom-right-radius: 4px;
-    background: rgba(110,231,183,.22); border: 1px solid rgba(110,231,183,.4); }
-  #vc-scroll .chat-msg.bot { align-self: flex-start; border-bottom-left-radius: 4px;
-    background: rgba(255,255,255,.05); border: 1px solid var(--card-border); }
-  #vc-scroll .chat-msg.err { align-self: flex-start; background: rgba(239,68,68,.12);
-    border: 1px solid rgba(239,68,68,.4); color: #fca5a5; }
-  #vc-hint { color: var(--muted); font-size: .95rem; padding: 0 20px 16px; }
-  /* type-instead-of-talk bar, so the panel is usable in a quiet room */
-  #vc-inputbar { display: flex; gap: 10px; padding: 10px 16px 0; flex: 0 0 auto; }
-  #vc-input {
-    flex: 1 1 auto; min-width: 0; font-family: inherit; font-size: 1.1rem; color: var(--text);
-    background: rgba(255,255,255,.06); border: 1px solid var(--card-border);
-    border-radius: 12px; padding: 12px 16px; outline: none;
-  }
-  #vc-input::placeholder { color: var(--muted); }
-  #vc-input:focus { border-color: rgba(110,231,183,.55); }
-  #vc-send {
-    flex: 0 0 auto; padding: 0 22px; border-radius: 12px; font-weight: 700; font-size: 1rem;
-    color: var(--accent); background: rgba(110,231,183,.2); border: 1px solid rgba(110,231,183,.45);
-  }
-  #vc-send:hover { background: rgba(110,231,183,.36); }
-  /* on a leaf page the panel takes the right half, everything else dims out of the way */
-  body.vc-open #vc-panel { right: 2vw; top: 16vh; bottom: 16vh; width: 46vw; max-width: 760px; }
-  body.vc-open #clockbox, body.vc-open #spotify-pill { opacity: .18; }
-  body.vc-open #window { opacity: .35; pointer-events: none; }
-  body.vc-open #orb-label { opacity: .3; }
   /* ============ HUB PAGES (home, apps, templates, life, work, referee) ============
      ONE shared layout for every hub: clock + agenda up top, music pill under it,
      the orb parked in the middle of the ring of buttons. Only the ring contents
@@ -1351,10 +1337,6 @@
   /* ============ VOICE MODE on a hub (panel open) ============
      The panel owns the right half, so the ring steps aside, the orb shrinks to the
      left and everything else fades back instead of fighting the panel. */
-  body.hub.vc-open #app-ring { display: none; }
-  body.hub.vc-open #orbwrap { left: 22vw; top: 50vh; width: 22vmin; height: 22vmin; }
-  body.hub.vc-open #orb-glow { width: 30vmin; height: 30vmin; }
-  body.hub.vc-open #clockbox, body.hub.vc-open #spotify-pill { opacity: .18; }
 
   /* always-visible hint strip (hub pages only, hidden while the panel is up) */
   #hintbar {
@@ -1367,7 +1349,6 @@
   }
   #hintbar b { color: var(--accent); font-weight: 700; }
   body.hub #hintbar { display: flex; }
-  body.hub.vc-open #hintbar { display: none; }
   @media (max-height: 620px) { #hintbar { display: none !important; } }
   /* ring of buttons around the orb */
   #app-ring { position: absolute; inset: 0; pointer-events: none; }
@@ -1396,7 +1377,6 @@
   body:not(.hub) #app-ring { display: none; }
   body.hub #app-ring { display: block; }
   /* while the voice panel owns the right half, the ring would only collide */
-  body.hub.vc-open #app-ring { display: none; }
 </style>
 </head>
 <body class="home">
@@ -1415,6 +1395,11 @@
       <div id="orb-label">READY</div>
     </div>
 
+    <!-- Service health: one dot per backend. Green = answering, red = down. Tap a red
+         one to start it again. This exists because the shared backends die between
+         sessions and every dead one shows up as a silently empty widget. -->
+    <div id="health-strip" class="anim" aria-label="Backend status"></div>
+
     <!-- Swipe up / drag up / ArrowUp: the orb parks top-right and this window
          opens in the space it left. It shows the apps grid; picking one opens a blank
          page for it, ready to be built. -->
@@ -1427,16 +1412,6 @@
         </div>
         <div id="hw-page-body"></div>
       </div>
-    </div>
-
-    <div id="vc-panel" class="anim">
-      <div id="vc-head"><span id="vc-ind"></span><span id="vc-title">Padawan</span><span id="vc-state">READY</span></div>
-      <div id="vc-scroll"></div>
-      <div id="vc-inputbar">
-        <input id="vc-input" placeholder="Type or say it" autocomplete="off">
-        <button id="vc-send" title="Send">Send</button>
-      </div>
-      <div id="vc-hint">Space to talk. Escape or the orb to go back.</div>
     </div>
 
     <!-- Item detail window. Clicking a card on the To Do board opens this with that
@@ -1587,9 +1562,8 @@
     <div id="app-ring" class="anim"></div>
 
     <div id="hintbar">
-      <span><b>Space</b> talk to Padawan</span>
       <span><b>Click the orb</b> or <b>Esc</b> back</span>
-      <span><b>Say "jarvis"</b> to wake it</span>
+      <span><b>Swipe up</b> or <b>Arrow up</b> for apps</span>
     </div>
   </div>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -2758,7 +2732,7 @@
 
 
   // ================= layout switching (router) =================
-  // Orb state colours — also drives the dot in the voice panel header.
+  // Orb state colours.
   const COLORS = { idle: '#00e676', listening: '#3b82f6', thinking: '#f59e0b', error: '#ef4444' };
   const LABELS = { idle: 'READY', listening: 'LISTENING', thinking: 'THINKING', error: 'ERROR' };
   function orbState(s) {
@@ -2766,10 +2740,6 @@
     if (orbApi) orbApi.setColor(color);
     const ol = document.getElementById('orb-label');
     if (ol) ol.textContent = LABELS[s] || 'READY';
-    const ind = document.getElementById('vc-ind');
-    const st = document.getElementById('vc-state');
-    if (ind) ind.className = s || '';
-    if (st) st.textContent = LABELS[s] || 'READY';
   }
 
   // A page is one entry here: which layout it shows, its aliases, its title, which
@@ -2805,7 +2775,7 @@
   const PAGE = {};
   PAGE_LIST.forEach(function (p) { PAGE[p.id] = p; });
 
-  // The body class carries the layout plus flags ('hub', 'vc-open'), so never treat
+  // The body class carries the layout plus flags ('hub'), so never treat
   // the whole className as a layout id — always resolve token by token.
   function canonicalLayout(layout) {
     var k = String(layout == null ? '' : layout).trim().toLowerCase().split(/\s+/)[0] || '';
@@ -2848,10 +2818,8 @@
     // Body class: the layout id plus, on hubs, the `hub` flag the CSS keys off.
     document.body.className = layout + (page.mode === 'hub' ? ' hub' : ' leaf');
     if (layout !== current) document.body.dataset.prevLayout = current;
-    if (layout !== 'home') closeVoicePanel();
     if (orbApi) orbApi.setSize(Math.min(window.innerWidth, window.innerHeight) * orbVmin(layout));
     orbApi && orbApi.setTop && orbApi.setTop(orbTopPx(layout));
-    if (page.mode === 'hub') { voicePanelOpen = false; document.body.classList.remove('vc-open'); }
     // home lays itself out from the live page (big orb, pill and agenda, no ring)
     if (layout === 'home') { try { layoutHome(); } catch (e) { console.error('home layout', e); } }
 
@@ -2894,7 +2862,6 @@
   // orb appeared dead while the window was up.
   function orbUp() {
     const cur = currentLayout();
-    if (voicePanelOpen) { closeVoicePanel(); return; }
     // The item window is the innermost layer of all - it sits above the apps grid, so it
     // has to close first. Without this the orb went back a level underneath while the
     // item window stayed on top.
@@ -3178,10 +3145,9 @@
 
   function layoutHome() {
     const g = homeGeom();
-    // In voice mode the panel owns the right half: tuck the orb left and shrink it.
-    // This lives here (not in applyVoiceLayout) because renderAppRing() also calls
-    // layoutHome() on home — two places sizing the orb would fight each other.
-    const shrink = (typeof voicePanelOpen !== 'undefined') && voicePanelOpen;
+    // The voice panel used to tuck the orb left and shrink it; that panel is gone, so
+    // the orb is always laid out at full size here.
+    const shrink = false;
     // Expanded (swipe up): the orb parks small in the top-right corner instead, and the
     // window takes the space it left. This is the ONE place the home orb is positioned,
     // so the three states (normal / voice / expanded) can never fight each other.
@@ -7821,7 +7787,7 @@
       if (!e.touches || e.touches.length !== 1) return;
       const t = e.target;
       // never hijack a control
-      if (t && t.closest && t.closest('input, textarea, button, #sp-player, #sc-window, #vc-panel')) return;
+      if (t && t.closest && t.closest('input, textarea, button, #sp-player, #sc-window')) return;
       sy = e.touches[0].clientY; sx = e.touches[0].clientX; tracking = true;
     }, { passive: true });
     window.addEventListener('touchend', function (e) {
@@ -7857,7 +7823,7 @@
       if (e.button !== 0) return;
       if (vcOpenLike()) return;
       const t = e.target;
-      if (t && t.closest && t.closest('button, input, textarea, a, #sp-player, #sc-window, #vc-panel, #hw-window')) return;
+      if (t && t.closest && t.closest('button, input, textarea, a, #sp-player, #sc-window, #hw-window')) return;
       dragY = e.clientY; dragX = e.clientX; dragMoved = false;
     });
     window.addEventListener('mousemove', function (e) {
@@ -7888,249 +7854,278 @@
       const t = e.target;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
       // inside a scrollable window, leave the arrows to the scroll
-      if (t && t.closest && t.closest('#sp-player, #sc-window, #vc-panel')) return;
+      if (t && t.closest && t.closest('#sp-player, #sc-window')) return;
       e.preventDefault();
       const up = (e.key === 'ArrowUp' || e.key === 'PageUp');
       hwSet(up);
     });
 
+    // Something is covering the home screen, so a gesture must not fire behind it.
     function vcOpenLike() {
-      return (typeof voicePanelOpen !== 'undefined' && voicePanelOpen) ||
-             (typeof spPlayerOpen !== 'undefined' && spPlayerOpen) ||
+      return (typeof spPlayerOpen !== 'undefined' && spPlayerOpen) ||
              (typeof scOpen !== 'undefined' && scOpen);
     }
   })();
-  // ================= voice chat (wake word + Space) =================
+  // ================= voice input (Space to talk) =================
+  // Space starts the mic and turns the orb blue; Space again stops it. Whatever you say
+  // goes to the a2ui backend, and the reply is spoken back through the browser.
+  //
+  // This is the voice panel stripped down to just the useful half: the transcript panel,
+  // the wake word and the auto-listening-on-load were all removed, so nothing starts
+  // listening until you press Space. That matters - the old version opened the mic on page
+  // load and left it running.
+  //
+  // The reply is NOT shown on screen (no panel any more), so it is spoken and also logged
+  // to the console for debugging.
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   const recog = SpeechRec ? new SpeechRec() : null;
   if (recog) { recog.continuous = true; recog.interimResults = true; recog.lang = 'en-AU'; }
-  let voiceBusy = false;
-  // NB: `var`, not `let` — layoutHome() (called by renderAppRing during this script's own
-  // execution) reads it, and a `let` here would still be in its temporal dead zone:
-  // `typeof x` does NOT protect against TDZ, it throws.
-  var voicePanelOpen = false;          // whether the voice-chat transcript panel is open on home
 
-  function openVoicePanel() {
-    voicePanelOpen = true;
-    document.body.classList.add('vc-open');
-    applyVoiceLayout();
-    if (currentLayout() === 'home') layoutHome();   // one place sizes the home orb
-  }
-  function closeVoicePanel() {
-    if (!voicePanelOpen && !document.body.classList.contains('vc-open')) return;
-    voicePanelOpen = false;
-    document.body.classList.remove('vc-open');
-    applyVoiceLayout();
-    if (currentLayout() === 'home') layoutHome();
-  }
-  // Voice mode works on ANY page now, not just home: the panel takes the right half
-  // and everything else steps aside (CSS: body.hub.vc-open / body.vc-open).
-  function applyVoiceLayout() {
-    const cur = currentLayout();
-    if (!orbApi) return;
-    const v = Math.min(window.innerWidth, window.innerHeight);
-    if (PAGE[cur].mode === 'hub') {
-      if (cur === 'home') {
-        // home has no ring: shrink the big orb into the left gap while the panel is up
-        const g = homeGeom();
-        orbApi.setSize(voicePanelOpen ? Math.min(g.orbSize, g.vmin * 0.22) : g.orbSize);
-        orbApi.setTop(voicePanelOpen ? g.vh * 0.5 : g.orbCy);
-        const wrap = document.getElementById('orbwrap');
-        if (wrap) { wrap.style.left = voicePanelOpen ? '22vw' : '50%'; }
-      } else {
-        orbApi.setSize(v * (voicePanelOpen ? 0.22 : orbVmin(cur)));
-        orbApi.setTop(voicePanelOpen ? window.innerHeight * 0.5 : orbTopPx(cur));
-      }
+  let micLive = false;          // true while Space has the mic open
+  let voiceBusy = false;        // true while a reply is in flight
+  let ttsPause = false;         // echo guard: true while the mirror is speaking
+  let lastSpoken = '';          // what we last committed, to ignore repeat finals
+
+  function setMic(on) {
+    micLive = !!on;
+    if (micLive) {
+      orbState('listening');                 // orb goes blue
+      startMic();
+    } else {
+      orbState('idle');
+      stopMic();
     }
-    renderAppRing();
   }
 
-  function vcAppend(cls, text) {
-    const box = document.getElementById('vc-scroll');
-    if (!box) return;
-    const el = document.createElement('div');
-    el.className = 'chat-msg ' + cls;
-    el.textContent = text || '';
-    box.appendChild(el);
-    box.scrollTop = box.scrollHeight;
+  function startMic() {
+    if (!recog) { orbState('error'); return; }
+    recog._on = true;
+    try { recog.start(); } catch (e) { /* already started */ }
   }
-  function vcClear() { const box = document.getElementById('vc-scroll'); if (box) box.innerHTML = ''; }
-  // vcClear kept for debugging via console: vcClear() empties the transcript
+
+  function stopMic() {
+    if (!recog) return;
+    recog._on = false;
+    try { recog.abort(); } catch (e) {}
+  }
 
   function sendVoice(text) {
     if (voiceBusy) return;
-    const v = (text || '').trim();
+    const v = String(text || '').trim();
     if (!v) return;
-    voiceBusy = true; orbState('thinking');
-    vcAppend('you', v);
-    // abort if the backend hangs (keeps wake word alive)
+    voiceBusy = true;
+    orbState('thinking');
+
+    // abort if the backend hangs, so the mic can come back
     const abort = new AbortController();
     const kill = setTimeout(() => abort.abort(), 45000);
-    fetch('http://localhost:2009/api/a2ui/send', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: v, session_id: 'voice-' + location.port }), signal: abort.signal })
-      .then(r => r.json())
-      .then(d => {
+
+    fetch('http://localhost:2009/api/a2ui/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: v, session_id: 'voice-' + location.port }),
+      signal: abort.signal
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
         clearTimeout(kill);
-        if (d.ok) {
-          orbState('idle');
-          const clean = (d.reply || '').replace(/\[\[\s*SHOW\s+[^\]]*\]\]/gi, '').trim();
-          vcAppend('bot', clean);
+        if (d && d.ok) {
+          const clean = String(d.reply || '')
+            .replace(/\[\[\s*SHOW\s+[^\]]*\]\]/gi, '')
+            .trim();
+          console.log('padawan:', clean);
           speak(clean);
-          if (d.show) {
-            // navigating — close the voice panel and switch to the requested page
-            stopVoice(); closeVoicePanel();
-            showLayout(d.show);
-          }
-        } else { orbState('error'); vcAppend('err', d.error || 'Error'); }
+        } else {
+          orbState('error');
+          console.warn('padawan error:', (d && d.error) || 'unknown');
+        }
       })
-      .catch(() => { orbState('error'); vcAppend('err', 'Backend unreachable on :2009'); })
-      .then(() => { voiceBusy = false; });
+      .catch(function () {
+        orbState('error');
+        console.warn('padawan: backend unreachable on :2009');
+      })
+      .then(function () {
+        voiceBusy = false;
+        // go back to blue if Space still has the mic open, otherwise idle
+        if (micLive) orbState('listening');
+      });
   }
 
-  let ttsPause = false;                // echo guard: true while the mirror is talking
   function speak(text) {
+    if (!text || !window.speechSynthesis) return;
     try {
       speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{23F0}-\u{23FF}\u{2B00}-\u{2BFF}]/gu, ''));
+      const u = new SpeechSynthesisUtterance(
+        text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{23F0}-\u{23FF}\u{2B00}-\u{2BFF}]/gu, ''));
       u.lang = 'en-AU';
-      // echo guard: pause recognition while the mirror talks so the mic
-      // doesn't transcribe its own voice and loop it back as a command
-      u.onstart = () => { ttsPause = true; try { recog && recog.abort(); } catch (err) {} };
-      u.onend = () => {
+      // echo guard: stop the mic transcribing the mirror's own voice and looping it
+      u.onstart = function () { ttsPause = true; try { recog && recog.abort(); } catch (e) {} };
+      u.onend = function () {
         ttsPause = false;
-        setTimeout(() => { if (recog && !recog._on) { try { recog.start(); } catch (err) {} } }, 300);
+        if (micLive) { try { recog && recog.start(); } catch (e) {} }
       };
       speechSynthesis.speak(u);
     } catch (e) {}
   }
 
-  function startListen() {
-    if (!recog || recog._on) return;
-    recog._on = true;
-    try { recog.start(); } catch (e) {}
-  }
-
-  // ── typed input ─────────────────────────────────────────────────────
-  // Same brain, no microphone. Enter sends, Escape leaves the field (and the
-  // window-level Escape then back-steps a level).
-  (function wireVoiceInput() {
-    const inp = document.getElementById('vc-input');
-    const btn = document.getElementById('vc-send');
-    if (!inp || !btn) return;
-    function submit() {
-      const v = inp.value.trim();
-      if (!v) return;
-      inp.value = '';
-      openVoicePanel();
-      sendVoice(v);
-    }
-    btn.addEventListener('click', submit);
-    inp.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') { e.preventDefault(); submit(); }
-      else if (e.key === 'Escape') { inp.blur(); }
-    });
-  })();
-
-  // ── wake word state machine ─────────────────────────────────────────
-  // standby: always listening, waiting for "jarvis" or "padawan" to activate.
-  // active:   panel open, every phrase is sent to the assistant; "stop" /
-  //           "sleep" / "goodbye" (or Space) returns to standby.
-  let active = false;
-  const WAKE = /\b(jarvis|padawan)\b/i;
-  const DEACTIVATE = /\b(stop|sleep|goodbye|quiet|go to sleep)\b/i;
-
-  function activate() {
-    active = true;
-    openVoicePanel();
-    orbState('listening');
-    if (typeof speak === 'function') speak("Yes?");
-  }
-  function deactivate() {
-    active = false;
-    shownText = '';
-    closeVoicePanel();
-    orbState('idle');
-  }
-
-  let shownText = '';
   if (recog) {
     recog.onresult = function (e) {
-      // collect final transcripts from this event
-      let phrase = '';
+      if (!micLive || ttsPause) return;
+      let text = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) phrase += (e.results[i][0].transcript || '');
+        const res = e.results[i];
+        if (!res.isFinal) continue;
+        text += res[0].transcript;
       }
-      const t = phrase.trim();
-      if (!t) return;
-
-      // deactivation (only when active)
-      if (active && DEACTIVATE.test(t)) { deactivate(); return; }
-
-      // strip wake word if present (works in both states)
-      let command = t;
-      const wm = t.match(WAKE);
-      const woke = wm && !active;
-      if (wm) {
-        command = t.replace(WAKE, '').trim()
-          .replace(/^(hey|ok|okay|oi|yo|hi|hello)\b[,\s]*/i, '').trim()
-          .replace(/^[,\s]+|[,\s]+$/g, '');
-      }
-
-      if (woke) {
-        // first wake: open the speech page; send a command only if one came attached
-        activate();
-        if (command && command.length > 2) sendVoice(command);
-        return;
-      }
-
-      // active mode: send the phrase (wake word stripped if it rode along)
-      if (active) {
-        if (command && command.length > 1 && command !== shownText) { shownText = command; sendVoice(command); }
-        return;
-      }
-
-      // standby: ignore non-wake speech
+      text = text.trim();
+      if (!text) return;
+      if (text === lastSpoken) return;         // ignore a duplicated final result
+      lastSpoken = text;
+      setTimeout(function () { lastSpoken = ''; }, 4000);
+      sendVoice(text);
     };
-    recog.onend = function () {
-      recog._on = false;
-      // keep always-on standby listening (mirror is persistent);
-      // hold off while TTS is speaking (echo guard) or the tab is hidden
-      setTimeout(function () {
-        if (!document.hidden && !ttsPause && recog && !recog._on) {
-          try { recog.start(); } catch (err) {}
-        }
-      }, 200);
-    };
+
     recog.onerror = function (e) {
       recog._on = false;
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      // a permission problem is worth showing on the orb; anything else just drops out
+      if (e && (e.error === 'not-allowed' || e.error === 'service-not-allowed')) {
         orbState('error');
-        return;
+      } else if (micLive && !ttsPause) {
+        setTimeout(function () { if (micLive && recog && !recog._on) startMic(); }, 400);
       }
-      // transient error -> resume standby listening (unless TTS is talking)
-      setTimeout(function () {
-        if (!ttsPause && recog && !recog._on) { try { recog.start(); } catch (err) {} }
-      }, 300);
     };
-    // start standby listening on load (browser will ask once for mic permission)
-    startListen();
+
+    recog.onend = function () {
+      recog._on = false;
+      // continuous mode still ends on silence in some browsers - reopen if Space is live
+      if (micLive && !ttsPause) {
+        setTimeout(function () { if (micLive && recog && !recog._on) startMic(); }, 300);
+      }
+    };
   }
 
-  // Space toggles active<->standby voice chat.
+  // Space toggles the mic. Ignored while a window owns the screen, and while typing.
   window.addEventListener('keydown', function (e) {
-    if (e.target !== document.body) return;
     if (e.code !== 'Space' || e.repeat) return;
-    // the player owns the screen while it is up — Space must not wake the mic behind it
-    if (spPlayerOpen) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (typeof spPlayerOpen !== 'undefined' && spPlayerOpen) return;
+    if (typeof tdOpen !== 'undefined' && tdOpen) return;
+    if (typeof scOpen !== 'undefined' && scOpen) return;
     e.preventDefault();
-    if (active) { stopVoice(); deactivate(); }
-    else { activate(); }
+    setMic(!micLive);
   });
 
-  function stopVoice() {
-    shownText = '';
-    orbState('idle');
+  // ================= service health strip =================
+  // One dot per backend on the home screen. Green = answering, red = down and tappable to
+  // start it again. This exists because the shared backends die between sessions, and a
+  // dead one shows up as a widget that quietly renders nothing - you would have to notice
+  // which page was empty and then come find a terminal. Now it says so on the home screen.
+  //
+  // The probe runs on the padawan backend (GET /api/health) rather than from the browser,
+  // for two reasons: it keeps this to one request instead of five, and it can reach
+  // services bound to 127.0.0.1 (the rules model is), which the page could not.
+  const HS_API = 'http://localhost:2008/api';
+
+  var hsTimer = null;
+  var hsBusy = false;
+  var hsLast = null;
+
+  function hsStrip() { return document.getElementById('health-strip'); }
+
+  function hsRender(payload) {
+    var strip = hsStrip();
+    if (!strip) return;
+    strip.innerHTML = '';
+
+    var services = (payload && payload.services) || [];
+
+    // when the backend that serves /api/health is itself down, say so plainly
+    if (!services.length) {
+      var dead = document.createElement('button');
+      dead.className = 'hsvc down';
+      dead.type = 'button';
+      dead.appendChild(hsDot('down'));
+      dead.appendChild(hsLabel('padawan backend'));
+      dead.title = 'The health backend is not answering';
+      strip.appendChild(dead);
+      return;
+    }
+
+    for (var i = 0; i < services.length; i++) {
+      var s = services[i];
+      var state = s.alive ? 'up' : (s.restartable ? 'down' : 'down');
+      var el = document.createElement(s.alive ? 'div' : 'button');
+      el.className = 'hsvc ' + state;
+      if (!s.alive) {
+        el.type = 'button';
+        el.disabled = !s.restartable;
+        el.title = s.restartable
+          ? ('Down: ' + s.detail + ' - tap to start it')
+          : ('Down: ' + s.detail + ' - start this one manually');
+        if (s.restartable) {
+          (function (name, node) {
+            node.addEventListener('click', function () { hsRestart(name, node); });
+          })(s.name, el);
+        }
+      } else {
+        el.title = s.name + ' is up';
+      }
+      el.appendChild(hsDot(state));
+      el.appendChild(hsLabel(s.name));
+      strip.appendChild(el);
+    }
   }
+
+  function hsDot(state) {
+    var d = document.createElement('span');
+    d.className = 'dot';
+    return d;
+  }
+
+  function hsLabel(text) {
+    var l = document.createElement('span');
+    l.className = 'lbl';
+    l.textContent = text;
+    return l;
+  }
+
+  function hsRestart(name, node) {
+    if (hsBusy) return;
+    hsBusy = true;
+    node.className = 'hsvc busy';
+    var lbl = node.querySelector('.lbl');
+    if (lbl) lbl.textContent = name + ' (starting)';
+
+    fetch(HS_API + '/service/restart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name })
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      // give it a moment to bind its port before re-probing
+      setTimeout(function () { hsBusy = false; hsCheck(true); }, 4000);
+      if (res && res.error) console.warn('restart:', res.error);
+    }).catch(function () {
+      hsBusy = false;
+      node.className = 'hsvc down';
+      if (lbl) lbl.textContent = name;
+    });
+  }
+
+  function hsCheck(force) {
+    if (!hsStrip()) return;
+    // do not re-probe while a restart is in flight - it would fight the button state
+    if (hsBusy && !force) return;
+    fetch(HS_API + '/health')
+      .then(function (r) { return r.json(); })
+      .then(function (d) { hsLast = d; hsRender(d); })
+      .catch(function () { hsRender(null); });
+  }
+
+  hsCheck();
+  // a slow poll is plenty: this is a status hint, not a monitor
+  hsTimer = setInterval(function () { hsCheck(false); }, 60000);
+
 // ================= boot =================
 // Bring the mirror up on home. There is only one page while the site is being
 // rebuilt, so anything in the URL or localStorage that is not home simply lands on
