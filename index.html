@@ -425,6 +425,222 @@
     color: #fca5a5; max-width: 60%;
   }
 
+  /* ============ SCHEDULE WINDOW ============
+     Opened by clicking the clock/date/agenda on the home screen. Same shell and motion
+     as the Spotify player: a blurred backdrop and a window that morphs out of the thing
+     it was opened from, so the two windows behave alike.
+
+     Layout, left to right:
+       [ day / week / month tabs + one event list ]  [ weather column ] */
+  #sc-backdrop {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(2,10,5,0);
+    backdrop-filter: blur(0px) saturate(1);
+    -webkit-backdrop-filter: blur(0px) saturate(1);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition:
+      opacity .38s var(--ease),
+      background-color .38s var(--ease),
+      backdrop-filter .38s var(--ease),
+      -webkit-backdrop-filter .38s var(--ease),
+      visibility 0s linear .38s;
+  }
+  #sc-backdrop.open {
+    background: rgba(2,10,5,.55);
+    backdrop-filter: blur(14px) saturate(.9);
+    -webkit-backdrop-filter: blur(14px) saturate(.9);
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition:
+      opacity .38s var(--ease),
+      background-color .38s var(--ease),
+      backdrop-filter .38s var(--ease),
+      -webkit-backdrop-filter .38s var(--ease),
+      visibility 0s linear 0s;
+  }
+
+  #sc-window {
+    position: fixed; left: 50%; top: 50%; z-index: 61;
+    transform: translate(calc(-50% + var(--sc-dx, 0px)), calc(-50% + var(--sc-dy, 0px))) scale(.12);
+    width: min(94vw, 1600px); height: min(88vh, 940px);
+    display: flex; flex-direction: row; gap: 28px;
+    padding: 26px 30px;
+    background: rgba(8,20,13,.93);
+    border: 1px solid rgba(110,231,183,.28);
+    border-radius: 28px;
+    box-shadow: 0 30px 90px rgba(0,0,0,.7);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transform-origin: 50% 50%;
+    transition:
+      opacity .30s var(--ease),
+      transform .46s cubic-bezier(.22,1,.36,1),
+      visibility 0s linear .46s;
+  }
+  #sc-window.open {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition:
+      opacity .30s var(--ease),
+      transform .46s cubic-bezier(.22,1,.36,1),
+      visibility 0s linear 0s;
+  }
+  #sc-main, #sc-side {
+    opacity: 0; transform: translateY(14px);
+    transition: opacity .34s var(--ease), transform .34s var(--ease);
+  }
+  #sc-window.open #sc-main { opacity: 1; transform: none; transition-delay: .14s; }
+  #sc-window.open #sc-side { opacity: 1; transform: none; transition-delay: .22s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #sc-window, #sc-backdrop, #sc-main, #sc-side {
+      transition: opacity .12s linear !important; transform: none !important;
+    }
+    #sc-window { transform: translate(-50%, -50%) !important; }
+  }
+
+  /* ---- left: tabs + events ---- */
+  #sc-main { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+  #sc-tabs { display: flex; gap: 10px; margin-bottom: 14px; flex: 0 0 auto; }
+  .sc-tab {
+    flex: 1 1 0; padding: 14px 10px; border-radius: 14px;
+    background: rgba(255,255,255,.05); border: 1px solid var(--card-border);
+    color: var(--muted); font-size: 1.15rem; font-weight: 700; letter-spacing: 1px;
+    cursor: pointer; text-transform: uppercase;
+    transition: background .16s var(--ease), color .16s var(--ease);
+  }
+  .sc-tab:hover { background: rgba(110,231,183,.14); color: var(--text); }
+  .sc-tab.active {
+    background: rgba(110,231,183,.28); border-color: rgba(110,231,183,.65);
+    color: var(--accent);
+  }
+
+  #sc-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; margin-bottom: 12px; flex: 0 0 auto;
+  }
+  .sc-navbtn {
+    width: 52px; height: 52px; border-radius: 50%; flex: 0 0 auto;
+    background: rgba(255,255,255,.06); border: 1px solid var(--card-border);
+    color: var(--accent); font-size: 1.5rem; line-height: 1; cursor: pointer;
+  }
+  .sc-navbtn:hover { background: rgba(110,231,183,.26); }
+  #sc-period {
+    flex: 1 1 auto; text-align: center; font-size: 1.5rem; font-weight: 700;
+    color: var(--text); letter-spacing: .5px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #sc-today-btn {
+    flex: 0 0 auto; padding: 0 18px; height: 52px; border-radius: 26px;
+    background: rgba(255,255,255,.06); border: 1px solid var(--card-border);
+    color: var(--muted); font-size: .95rem; font-weight: 700; cursor: pointer;
+  }
+  #sc-today-btn:hover { background: rgba(110,231,183,.2); color: var(--accent); }
+
+  #sc-body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+
+  /* day view: a plain list of that day's events */
+  #sc-day { display: flex; flex-direction: column; gap: 10px; height: 100%; overflow-y: auto; padding-right: 8px; }
+  .sc-ev {
+    display: flex; align-items: stretch; gap: 16px; padding: 14px 16px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border);
+    border-radius: 14px; flex: 0 0 auto;
+  }
+  .sc-ev-time {
+    flex: 0 0 118px; font-size: 1.05rem; font-weight: 700; color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .sc-ev-main { flex: 1 1 auto; min-width: 0; }
+  .sc-ev-title { font-size: 1.25rem; font-weight: 600; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sc-ev-loc { font-size: .92rem; color: var(--muted); margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sc-ev.all-day .sc-ev-time { color: var(--muted); }
+  .sc-ev.now { border-color: rgba(110,231,183,.7); background: rgba(110,231,183,.12); }
+  .sc-ev.past { opacity: .5; }
+  #sc-empty { color: var(--muted); font-size: 1.15rem; text-align: center; padding: 40px 0; }
+
+  /* week view: a 7-column grid, each day a stack of chips */
+  #sc-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; height: 100%; }
+  .sc-daycol {
+    display: flex; flex-direction: column; gap: 6px; min-width: 0;
+    background: rgba(255,255,255,.03); border: 1px solid var(--card-border);
+    border-radius: 12px; padding: 8px 6px; overflow: hidden;
+  }
+  .sc-daycol.today { border-color: rgba(110,231,183,.6); background: rgba(110,231,183,.1); }
+  .sc-daycol .h {
+    font-size: .82rem; font-weight: 700; color: var(--accent); text-transform: uppercase;
+    letter-spacing: .5px; text-align: center; flex: 0 0 auto;
+  }
+  .sc-daycol .h .dnum { display: block; font-size: 1.15rem; color: var(--text); }
+  .sc-daycol .evs { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+  .sc-chip {
+    font-size: .74rem; line-height: 1.2; padding: 5px 6px; border-radius: 6px;
+    background: rgba(110,231,183,.16); border: 1px solid rgba(110,231,183,.3);
+    color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .sc-chip .tt { color: var(--accent); font-weight: 700; margin-right: 4px; }
+
+  /* month view: a 7x6 grid of date cells */
+  #sc-month { display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(7, 1fr); gap: 6px; height: 100%; }
+  .sc-mhead { font-size: .8rem; font-weight: 700; color: var(--muted); text-align: center;
+    text-transform: uppercase; letter-spacing: .5px; display: flex; align-items: center; justify-content: center; }
+  .sc-mcell {
+    display: flex; flex-direction: column; gap: 3px; min-height: 0; overflow: hidden;
+    background: rgba(255,255,255,.03); border: 1px solid var(--card-border);
+    border-radius: 10px; padding: 5px 6px;
+  }
+  .sc-mcell.out { opacity: .32; }
+  .sc-mcell.today { border-color: rgba(110,231,183,.7); background: rgba(110,231,183,.12); }
+  .sc-mcell .dn { font-size: .95rem; font-weight: 700; color: var(--text); flex: 0 0 auto; }
+  .sc-mcell.today .dn { color: var(--accent); }
+  .sc-mcell .mini {
+    font-size: .66rem; line-height: 1.15; color: var(--accent);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 0 auto;
+  }
+  .sc-mcell .more { font-size: .62rem; color: var(--muted); flex: 0 0 auto; }
+
+  /* ---- right: weather column ---- */
+  #sc-side {
+    flex: 0 0 300px; display: flex; flex-direction: column; gap: 14px;
+    border-left: 1px solid var(--card-border); padding-left: 24px;
+    overflow-y: auto;
+  }
+  #sc-wx-loc { font-size: 1rem; font-weight: 700; color: var(--accent); letter-spacing: .5px; }
+  #sc-wx-now { display: flex; align-items: center; gap: 14px; }
+  #sc-wx-temp { font-size: 3.4rem; font-weight: 700; line-height: 1; color: var(--text); }
+  #sc-wx-temp small { font-size: 1.4rem; color: var(--muted); }
+  #sc-wx-cond { font-size: 1rem; color: var(--text); margin-top: 6px; }
+  #sc-wx-feels { font-size: .88rem; color: var(--muted); }
+  #sc-wx-days { display: flex; flex-direction: column; gap: 8px; }
+  .sc-wxd {
+    display: flex; align-items: center; gap: 10px; padding: 9px 11px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border);
+    border-radius: 12px;
+  }
+  .sc-wxd .d { flex: 0 0 52px; font-size: .82rem; font-weight: 700; color: var(--accent); text-transform: uppercase; }
+  .sc-wxd .c { flex: 1 1 auto; font-size: .82rem; color: var(--muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sc-wxd .t { flex: 0 0 auto; font-size: .95rem; font-weight: 700;
+    font-variant-numeric: tabular-nums; }
+  .sc-wxd .t .lo { color: var(--muted); font-weight: 500; }
+  #sc-wx-err { font-size: .85rem; color: #fca5a5; }
+
+  /* the clock/date/agenda are the handle for this window */
+  body.home #clockbox { cursor: pointer; }
+  body.home #clockbox:hover .t { color: var(--accent); }
+  body.home #clockbox .t { transition: color .2s var(--ease); }
+  body.sc-open #clockbox { opacity: .25; }
+  body.sc-open #spotify-pill { opacity: .25; }
+
+  #sc-close {
+    position: absolute; right: 20px; top: 18px;
+    width: 48px; height: 48px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.07); border: 1px solid var(--card-border);
+    color: var(--muted); font-size: 1.4rem; line-height: 1; cursor: pointer;
+  }
+  #sc-close:hover { background: rgba(255,83,112,.22); color: #ff9aae;
+    border-color: rgba(255,83,112,.5); }
+
   /* ============ HOME ============
      Geometry comes from the shared HUB rule further down, so home, apps, life, work
      and referee all sit in the same place — only the ring contents change. Home just
@@ -677,6 +893,48 @@
       </div>
 
       <div id="sp-player-err"></div>
+    </div>
+
+    <!-- Schedule window. Opened by clicking the clock/date/agenda on home. Same shell
+         and morph as the Spotify player: day/week/month tabs plus one event area on the
+         left, weather down the right. -->
+    <div id="sc-backdrop"></div>
+    <div id="sc-window" role="dialog" aria-label="Schedule">
+      <button id="sc-close" title="Close">&#10005;</button>
+
+      <div id="sc-main">
+        <div id="sc-tabs">
+          <button class="sc-tab active" data-view="day">Day</button>
+          <button class="sc-tab" data-view="week">Week</button>
+          <button class="sc-tab" data-view="month">Month</button>
+        </div>
+
+        <div id="sc-nav">
+          <button class="sc-navbtn" id="sc-prev" title="Previous">&#8249;</button>
+          <div id="sc-period"></div>
+          <button class="sc-navbtn" id="sc-next" title="Next">&#8250;</button>
+          <button id="sc-today-btn" title="Jump to today">TODAY</button>
+        </div>
+
+        <div id="sc-body">
+          <div id="sc-day"></div>
+          <div id="sc-week" style="display:none"></div>
+          <div id="sc-month" style="display:none"></div>
+        </div>
+      </div>
+
+      <div id="sc-side">
+        <div id="sc-wx-loc">Sherbrooke VIC</div>
+        <div id="sc-wx-now">
+          <div id="sc-wx-temp">--<small>&deg;</small></div>
+          <div>
+            <div id="sc-wx-cond">Loading weather</div>
+            <div id="sc-wx-feels"></div>
+          </div>
+        </div>
+        <div id="sc-wx-days"></div>
+        <div id="sc-wx-err"></div>
+      </div>
     </div>
     <div id="app-ring" class="anim"></div>
 
@@ -1497,6 +1755,360 @@
       .then(() => setTimeout(spRefreshPlayer, 700));
   });
 
+  // ================= Schedule window =================
+  // Clicking the clock/date/agenda on home opens this. Same shell and morph as the
+  // Spotify player, so both windows behave alike: day/week/month on the left, weather
+  // on the right.
+  //
+  // Data: events come from :2008 /api/calendar/range for the visible period (one fetch
+  // per view change, not per day), weather straight from open-meteo (keyless, same
+  // endpoint the v1 mirror used).
+  const SC_RANGE = 'http://localhost:2008/api/calendar/range';
+  const SC_WX = 'https://api.open-meteo.com/v1/forecast'
+    + '?latitude=-37.87&longitude=145.35'
+    + '&current=temperature_2m,weather_code,apparent_temperature'
+    + '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code'
+    + '&timezone=Australia%2FSydney&forecast_days=5';
+  // WMO weather codes -> words (open-meteo returns the numeric code)
+  const SC_WMO = {
+    0: 'Clear Sky', 1: 'Mainly Clear', 2: 'Partly Cloudy', 3: 'Overcast',
+    45: 'Fog', 48: 'Rime Fog',
+    51: 'Light Drizzle', 53: 'Drizzle', 55: 'Heavy Drizzle',
+    56: 'Light Freezing Drizzle', 57: 'Freezing Drizzle',
+    61: 'Light Rain', 63: 'Rain', 65: 'Heavy Rain',
+    66: 'Light Freezing Rain', 67: 'Freezing Rain',
+    71: 'Light Snow', 73: 'Snow', 75: 'Heavy Snow', 77: 'Snow Grains',
+    80: 'Light Showers', 81: 'Showers', 82: 'Heavy Showers',
+    85: 'Light Snow Showers', 86: 'Snow Showers',
+    95: 'Thunderstorm', 96: 'Storm with Hail', 99: 'Severe Storm with Hail',
+  };
+  const scWmo = (c) => SC_WMO[c] || 'Unknown';
+
+  let scOpen = false;
+  let scView = 'day';                 // 'day' | 'week' | 'month'
+  let scAnchor = new Date();          // the day/week/month currently shown
+  let scEvents = [];                  // events for the visible period
+  let scLoading = false;
+
+  // ---- date helpers (all local-time; the mirror is en-AU) ----
+  const scYMD = (d) => d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const scStartOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const scAddDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  // Monday-first, matching how the mirror reads a week
+  const scStartOfWeek = (d) => {
+    const s = scStartOfDay(d);
+    return scAddDays(s, -((s.getDay() + 6) % 7));
+  };
+  const scStartOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
+  const scSameDay = (a, b) => a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  function scRangeFor() {
+    if (scView === 'day') return [scStartOfDay(scAnchor), scStartOfDay(scAnchor)];
+    if (scView === 'week') {
+      const s = scStartOfWeek(scAnchor);
+      return [s, scAddDays(s, 6)];
+    }
+    // month: cover the whole grid, including the leading/trailing days it shows
+    const first = scStartOfMonth(scAnchor);
+    const gridStart = scStartOfWeek(first);
+    const last = new Date(scAnchor.getFullYear(), scAnchor.getMonth() + 1, 0);
+    const gridEnd = scAddDays(scStartOfWeek(last), 6);
+    return [gridStart, gridEnd];
+  }
+
+  function scPeriodLabel() {
+    const M = ['January','February','March','April','May','June',
+               'July','August','September','October','November','December'];
+    if (scView === 'day') {
+      return scAnchor.toLocaleDateString('en-AU',
+        { weekday: 'long', day: 'numeric', month: 'long' });
+    }
+    if (scView === 'week') {
+      const s = scStartOfWeek(scAnchor), e = scAddDays(s, 6);
+      const sm = M[s.getMonth()].slice(0, 3), em = M[e.getMonth()].slice(0, 3);
+      return s.getMonth() === e.getMonth()
+        ? s.getDate() + ' - ' + e.getDate() + ' ' + sm
+        : s.getDate() + ' ' + sm + ' - ' + e.getDate() + ' ' + em;
+    }
+    return M[scAnchor.getMonth()] + ' ' + scAnchor.getFullYear();
+  }
+
+  // events whose start falls on a given local day
+  function scEventsOn(day) {
+    return scEvents.filter(function (ev) {
+      const s = new Date(ev.start);
+      return scSameDay(s, day);
+    }).sort(function (a, b) { return new Date(a.start) - new Date(b.start); });
+  }
+
+  function scTimeLabel(ev) {
+    if (!ev.start) return 'All day';
+    const s = new Date(ev.start), e = ev.end ? new Date(ev.end) : null;
+    const f = (d) => d.toLocaleTimeString('en-AU',
+      { hour: 'numeric', minute: '2-digit', hour12: true });
+    // midnight-to-midnight reads as an all-day entry
+    if (s.getHours() === 0 && s.getMinutes() === 0 && e &&
+        e.getHours() === 0 && e.getMinutes() === 0) return 'All day';
+    return f(s) + (e ? ' - ' + f(e) : '');
+  }
+
+  // ---- rendering ----
+  function scRenderDay() {
+    const host = el('sc-day');
+    if (!host) return;
+    host.innerHTML = '';
+    const day = scStartOfDay(scAnchor);
+    const evs = scEventsOn(day);
+    if (!evs.length) {
+      host.innerHTML = '<div id="sc-empty">Nothing scheduled for this day.</div>';
+      return;
+    }
+    const now = new Date();
+    evs.forEach(function (ev) {
+      const s = new Date(ev.start), e = ev.end ? new Date(ev.end) : s;
+      const row = document.createElement('div');
+      row.className = 'sc-ev';
+      if (e < now) row.classList.add('past');
+      if (s <= now && now < e) row.classList.add('now');
+      const allDay = scTimeLabel(ev) === 'All day';
+      if (allDay) row.classList.add('all-day');
+
+      const t = document.createElement('div');
+      t.className = 'sc-ev-time';
+      t.textContent = scTimeLabel(ev);
+      row.appendChild(t);
+
+      const m = document.createElement('div');
+      m.className = 'sc-ev-main';
+      const ti = document.createElement('div');
+      ti.className = 'sc-ev-title';
+      ti.textContent = ev.summary || '(untitled)';
+      m.appendChild(ti);
+      if (ev.location) {
+        const lo = document.createElement('div');
+        lo.className = 'sc-ev-loc';
+        lo.textContent = ev.location;
+        m.appendChild(lo);
+      }
+      row.appendChild(m);
+      host.appendChild(row);
+    });
+  }
+
+  function scRenderWeek() {
+    const host = el('sc-week');
+    if (!host) return;
+    host.innerHTML = '';
+    const start = scStartOfWeek(scAnchor);
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+      const day = scAddDays(start, i);
+      const col = document.createElement('div');
+      col.className = 'sc-daycol' + (scSameDay(day, today) ? ' today' : '');
+      const h = document.createElement('div');
+      h.className = 'h';
+      h.innerHTML = day.toLocaleDateString('en-AU', { weekday: 'short' }) +
+        '<span class="dnum">' + day.getDate() + '</span>';
+      col.appendChild(h);
+      const evs = document.createElement('div');
+      evs.className = 'evs';
+      scEventsOn(day).forEach(function (ev) {
+        const chip = document.createElement('div');
+        chip.className = 'sc-chip';
+        chip.title = (ev.summary || '') + ' \u2014 ' + scTimeLabel(ev);
+        const tt = document.createElement('span');
+        tt.className = 'tt';
+        // just the hour in the chip: the column is narrow
+        const s = new Date(ev.start);
+        tt.textContent = scTimeLabel(ev) === 'All day' ? ''
+          : s.toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true }).replace(' ', '');
+        chip.appendChild(tt);
+        chip.appendChild(document.createTextNode(ev.summary || '(untitled)'));
+        evs.appendChild(chip);
+      });
+      col.appendChild(evs);
+      host.appendChild(col);
+    }
+  }
+
+  function scRenderMonth() {
+    const host = el('sc-month');
+    if (!host) return;
+    host.innerHTML = '';
+    const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    DOW.forEach(function (d) {
+      const h = document.createElement('div');
+      h.className = 'sc-mhead';
+      h.textContent = d;
+      host.appendChild(h);
+    });
+    const gridStart = scStartOfWeek(scStartOfMonth(scAnchor));
+    const today = new Date();
+    const month = scAnchor.getMonth();
+    for (let i = 0; i < 42; i++) {
+      const day = scAddDays(gridStart, i);
+      const cell = document.createElement('div');
+      cell.className = 'sc-mcell' +
+        (day.getMonth() !== month ? ' out' : '') +
+        (scSameDay(day, today) ? ' today' : '');
+      const dn = document.createElement('div');
+      dn.className = 'dn';
+      dn.textContent = day.getDate();
+      cell.appendChild(dn);
+      const evs = scEventsOn(day);
+      // two titles fit in a month cell; the rest become a count
+      evs.slice(0, 2).forEach(function (ev) {
+        const mini = document.createElement('div');
+        mini.className = 'mini';
+        mini.textContent = ev.summary || '(untitled)';
+        cell.appendChild(mini);
+      });
+      if (evs.length > 2) {
+        const more = document.createElement('div');
+        more.className = 'more';
+        more.textContent = '+' + (evs.length - 2) + ' more';
+        cell.appendChild(more);
+      }
+      host.appendChild(cell);
+    }
+  }
+
+  function scRender() {
+    if (!scOpen) return;
+    if (el('sc-period')) el('sc-period').textContent = scPeriodLabel();
+    el('sc-day').style.display = scView === 'day' ? 'flex' : 'none';
+    el('sc-week').style.display = scView === 'week' ? 'grid' : 'none';
+    el('sc-month').style.display = scView === 'month' ? 'grid' : 'none';
+    document.querySelectorAll('.sc-tab').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.view === scView);
+    });
+    if (scView === 'day') scRenderDay();
+    else if (scView === 'week') scRenderWeek();
+    else scRenderMonth();
+  }
+
+  async function scLoad() {
+    const [a, b] = scRangeFor();
+    if (el('sc-empty')) el('sc-empty').textContent = 'Loading...';
+    scLoading = true;
+    try {
+      const r = await fetch(SC_RANGE + '?start=' + scYMD(a) + '&end=' + scYMD(b));
+      const evs = await r.json();
+      scEvents = Array.isArray(evs) ? evs : [];
+    } catch (e) {
+      scEvents = [];
+      if (el('sc-period')) el('sc-period').textContent = 'Schedule unavailable';
+    }
+    scLoading = false;
+    scRender();
+  }
+
+  function scSetView(v) {
+    if (scView === v) return;
+    scView = v;
+    scLoad();
+  }
+  function scStep(dir) {
+    // move one day / week / month, keeping the anchor's position in the period
+    if (scView === 'day') scAnchor = scAddDays(scAnchor, dir);
+    else if (scView === 'week') scAnchor = scAddDays(scAnchor, dir * 7);
+    else scAnchor = new Date(scAnchor.getFullYear(), scAnchor.getMonth() + dir, 1);
+    scLoad();
+  }
+
+  async function scLoadWeather() {
+    const tempEl = el('sc-wx-temp'), condEl = el('sc-wx-cond');
+    const feelsEl = el('sc-wx-feels'), daysEl = el('sc-wx-days'), errEl = el('sc-wx-err');
+    if (!tempEl) return;
+    try {
+      const r = await fetch(SC_WX);
+      const d = await r.json();
+      const cur = d.current || {};
+      const daily = d.daily || {};
+      tempEl.innerHTML = Math.round(cur.temperature_2m) + '<small>&deg;</small>';
+      condEl.textContent = scWmo(cur.weather_code);
+      feelsEl.textContent = (cur.apparent_temperature != null)
+        ? 'Feels like ' + Math.round(cur.apparent_temperature) + '\u00b0' : '';
+      daysEl.innerHTML = '';
+      (daily.time || []).forEach(function (iso, i) {
+        const when = new Date(iso + 'T00:00:00');
+        const row = document.createElement('div');
+        row.className = 'sc-wxd';
+        const day = document.createElement('div');
+        day.className = 'd';
+        day.textContent = i === 0 ? 'Today'
+          : when.toLocaleDateString('en-AU', { weekday: 'short' });
+        row.appendChild(day);
+        const cond = document.createElement('div');
+        cond.className = 'c';
+        cond.textContent = scWmo(daily.weather_code && daily.weather_code[i]);
+        row.appendChild(cond);
+        const t = document.createElement('div');
+        t.className = 't';
+        t.innerHTML = Math.round(daily.temperature_2m_max[i]) + '\u00b0' +
+          ' <span class="lo">' + Math.round(daily.temperature_2m_min[i]) + '\u00b0</span>';
+        row.appendChild(t);
+        daysEl.appendChild(row);
+      });
+      if (errEl) errEl.textContent = '';
+    } catch (e) {
+      condEl.textContent = 'Weather unavailable';
+      if (errEl) errEl.textContent = 'Could not reach open-meteo.';
+    }
+  }
+
+  // ---- open / close (mirrors the Spotify window's morph exactly) ----
+  function scAimMorph() {
+    const win = el('sc-window');
+    const src = el('clockbox');
+    if (!win || !src) return;
+    const sr = src.getBoundingClientRect();
+    win.style.setProperty('--sc-dx', Math.round((sr.left + sr.width / 2) - window.innerWidth / 2) + 'px');
+    win.style.setProperty('--sc-dy', Math.round((sr.top + sr.height / 2) - window.innerHeight / 2) + 'px');
+  }
+
+  function scOpenWindow() {
+    if (scOpen) return;
+    scOpen = true;
+    const win = el('sc-window'), bd = el('sc-backdrop');
+    // aim at the clock before the class flips, then force a reflow so the morph runs
+    if (win) { win.classList.remove('open'); scAimMorph(); void win.offsetWidth; }
+    document.body.classList.add('sc-open');
+    if (win) win.classList.add('open');
+    if (bd) bd.classList.add('open');
+    scAnchor = new Date();
+    scLoad();
+    scLoadWeather();
+  }
+
+  function scCloseWindow() {
+    if (!scOpen) return;
+    scOpen = false;
+    document.body.classList.remove('sc-open');
+    const win = el('sc-window'), bd = el('sc-backdrop');
+    if (win) scAimMorph();
+    if (bd) bd.classList.remove('open');
+    if (win) win.classList.remove('open');
+  }
+
+  // wire it up
+  const clockboxEl = document.getElementById('clockbox');
+  if (clockboxEl) clockboxEl.addEventListener('click', scOpenWindow);
+  if (el('sc-close')) el('sc-close').addEventListener('click', scCloseWindow);
+  if (el('sc-backdrop')) el('sc-backdrop').addEventListener('click', scCloseWindow);
+  if (el('sc-window')) el('sc-window').addEventListener('click', function (ev) { ev.stopPropagation(); });
+  document.querySelectorAll('.sc-tab').forEach(function (b) {
+    b.addEventListener('click', function () { scSetView(b.dataset.view); });
+  });
+  if (el('sc-prev')) el('sc-prev').addEventListener('click', function () { scStep(-1); });
+  if (el('sc-next')) el('sc-next').addEventListener('click', function () { scStep(1); });
+  if (el('sc-today-btn')) el('sc-today-btn').addEventListener('click', function () {
+    scAnchor = new Date(); scLoad();
+  });
+
+
   // ================= layout switching (router) =================
   // Orb state colours — also drives the dot in the voice panel header.
   const COLORS = { idle: '#00e676', listening: '#3b82f6', thinking: '#f59e0b', error: '#ef4444' };
@@ -1634,11 +2246,12 @@
   document.getElementById('orb').addEventListener('click', orbUp);
 
   // Escape always means "back", from anywhere, including inside a text box.
-  // The Spotify player is the innermost layer, so it closes first.
+  // The two windows are the innermost layers: whichever is up closes first.
   window.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && !e.repeat) {
       const t = e.target;
       const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA');
+      if (scOpen) { scCloseWindow(); return; }
       if (spPlayerOpen) { spClosePlayer(); return; }
       if (typing && t.value) return;   // let a field's own Escape handler win
       orbUp();
