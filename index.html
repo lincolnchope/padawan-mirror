@@ -767,6 +767,89 @@
   .pg-med-note { font-size: .92rem; color: var(--muted); margin-top: 2px; }
   .pg-med-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 8px; }
 
+  /* ---- money (rebuilt from the previous mirror) ----
+     Four tabs over one pane, because a flat page could not fit accounts, goals, subs and
+     the ledger at once. Every number is tap-to-edit and the add bars write straight to the
+     money backend - this is the real ledger, not a read-only view. */
+  #money-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .money-tab {
+    min-height: 48px; padding: 0 22px; border-radius: 100px;
+    border: 1px solid var(--card-border); background: rgba(255,255,255,.05);
+    color: var(--muted); font-family: inherit; font-weight: 700; font-size: 1rem;
+    cursor: pointer;
+  }
+  .money-tab.active {
+    background: rgba(110,231,183,.25); color: var(--accent);
+    border-color: rgba(110,231,183,.5);
+  }
+  #money-pane { display: flex; flex-direction: column; gap: 12px; }
+  #money-hero { text-align: center; padding: 4px 0 6px; }
+  #money-hero .nw {
+    font-weight: 800; font-size: 2.6rem; color: var(--accent);
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  #money-hero .nwl { color: var(--muted); font-size: .85rem; letter-spacing: 3px; margin-top: 2px; }
+  #money-cards { display: flex; gap: 12px; }
+  .money-card {
+    flex: 1 1 0; min-width: 0; background: rgba(255,255,255,.04);
+    border: 1px solid var(--card-border); border-radius: 14px;
+    padding: 12px 14px; text-align: center;
+  }
+  .money-card .n {
+    font-weight: 800; font-size: 1.5rem; color: var(--text);
+    font-variant-numeric: tabular-nums; cursor: pointer;
+  }
+  .money-card .l { color: var(--muted); font-size: .8rem; letter-spacing: 1.5px; margin-top: 3px; }
+  .money-card .l .hint { display: block; font-size: .72rem; letter-spacing: 0; opacity: .75; }
+  .money-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .money-acct {
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border);
+    border-radius: 14px;
+  }
+  .money-name { flex: 1 1 auto; color: var(--text); font-size: 1.05rem; word-break: break-word; }
+  .money-name .sub { display: block; color: var(--muted); font-size: .85rem; margin-top: 2px; }
+  .money-amt {
+    font-weight: 700; color: var(--accent); font-size: 1.1rem; flex: 0 0 auto;
+    font-variant-numeric: tabular-nums; cursor: pointer; border-radius: 8px; padding: 4px 8px;
+  }
+  .money-amt:hover { background: rgba(110,231,183,.12); }
+  .money-amt-input {
+    font-weight: 700; font-size: 1.1rem; color: var(--accent);
+    background: rgba(0,0,0,.3); border: 1px solid rgba(110,231,183,.5);
+    border-radius: 8px; padding: 4px 8px; text-align: right; width: 8em;
+    font-family: inherit; flex: 0 0 auto;
+  }
+  .money-del {
+    width: 44px; height: 44px; border-radius: 50%; flex: 0 0 auto;
+    background: rgba(255,83,112,.12); border: 1px solid rgba(255,83,112,.35);
+    color: #ff9aae; font-size: 1.1rem; cursor: pointer;
+  }
+  .money-del:hover { background: rgba(255,83,112,.3); }
+  /* armed = waiting for the confirming second tap; the backend has no undo */
+  .money-del.pg-del-armed {
+    width: auto; min-width: 44px; padding: 0 14px; border-radius: 22px;
+    background: rgba(255,83,112,.32); font-size: .95rem; font-weight: 700;
+  }
+  .money-in { color: #4ade80; }
+  .money-out { color: #f87171; }
+  .money-addrow { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .money-addrow .r { display: flex; gap: 10px; flex-wrap: wrap; }
+  .money-in2 {
+    flex: 1 1 140px; min-width: 0; min-height: 48px; padding: 0 14px;
+    background: rgba(255,255,255,.06); border: 1px solid var(--card-border);
+    border-radius: 12px; color: var(--text); font-family: inherit; font-size: 1rem; outline: none;
+  }
+  .money-in2:focus { border-color: rgba(110,231,183,.5); }
+  button.money-in2 { cursor: pointer; font-weight: 700; }
+  .money-note { color: var(--muted); font-size: .9rem; padding: 2px 0; }
+  .money-empty { color: var(--muted); text-align: center; padding: 26px 0; font-size: 1rem; }
+  .money-led-row {
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border);
+    border-radius: 14px;
+  }
+
   .pg-btn {
     flex: 0 0 auto; height: 44px; padding: 0 16px; border-radius: 22px;
     background: rgba(110,231,183,.16); border: 1px solid rgba(110,231,183,.42);
@@ -3361,210 +3444,555 @@
   };
 
   // ---- money ----
-  // ---- money ----
+  // Rebuilt from the previous mirror, which had four tabs and - the important part -
+  // was fully EDITABLE: every figure on screen writes back to the money backend. The
+  // version this replaces was read-only, which made it useless for actually tracking
+  // money.
+  //
+  // Tabs: Overview (net worth, cash/savings cards, accounts), Goals, Subs, Ledger.
+  // Every amount is tap-to-edit; every list has a delete control and an add bar.
+  //
+  // NOTE: this page talks to the real ledger at padawan/money_data.json. There is no
+  // undo, so the delete controls are two-click (see pgMoneyArmDelete).
   HW_PAGE['money'] = function (host) {
     host.innerHTML = '';
 
-    var pgMoneyAPI = 'http://localhost:2008/api';
-    var pgMoneyTimer = null;
+    var pgMoneyAPI = 'http://localhost:2008/api/money';
+    var pgMoneyTab = 'overview';
+    var pgMoneyAlive = true;
+    var pgMoneyArmTimer = null;
+    var pgMoneyArmed = null;      // { btn, run } - pending second-click confirmation
 
+    // ---------- shell ----------
     var pgMoneyWrap = hwEl('div', 'pg-wrap');
     host.appendChild(pgMoneyWrap);
-    var pgMoneySplit = hwEl('div', 'pg-split');
-    pgMoneyWrap.appendChild(pgMoneySplit);
 
+    var pgMoneyTabs = hwEl('div');
+    pgMoneyTabs.id = 'money-tabs';
+    pgMoneyWrap.appendChild(pgMoneyTabs);
+
+    var pgMoneyPane = hwEl('div');
+    pgMoneyPane.id = 'money-pane';
+    pgMoneyWrap.appendChild(pgMoneyPane);
+
+    var pgMoneyAddZone = hwEl('div', 'money-addrow');
+    pgMoneyWrap.appendChild(pgMoneyAddZone);
+
+    var pgMoneyTabsList = [
+      { id: 'overview', label: 'Overview' },
+      { id: 'goals', label: 'Goals' },
+      { id: 'subs', label: 'Subs' },
+      { id: 'ledger', label: 'Ledger' }
+    ];
+    var pgMoneyTabBtns = {};
+
+    for (var ti = 0; ti < pgMoneyTabsList.length; ti++) {
+      (function (t) {
+        var b = hwEl('button', 'money-tab' + (t.id === pgMoneyTab ? ' active' : ''), t.label);
+        b.type = 'button';
+        b.onclick = function () {
+          pgMoneyTab = t.id;
+          pgMoneySyncTabs();
+          pgMoneyLoad();
+        };
+        pgMoneyTabBtns[t.id] = b;
+        pgMoneyTabs.appendChild(b);
+      })(pgMoneyTabsList[ti]);
+    }
+
+    function pgMoneySyncTabs() {
+      for (var k in pgMoneyTabBtns) {
+        if (!Object.prototype.hasOwnProperty.call(pgMoneyTabBtns, k)) continue;
+        pgMoneyTabBtns[k].className = 'money-tab' + (k === pgMoneyTab ? ' active' : '');
+      }
+    }
+
+    // ---------- helpers ----------
     function pgMoneyNum(v) {
       var n = Number(v);
       if (n !== n || n === Infinity || n === -Infinity) return 0;
       return n;
     }
 
-    function pgMoneyHead(c, title) {
-      c.innerHTML = '';
-      c.appendChild(hwEl('h3', '', title));
+    function pgMoneyFmt(n) {
+      var v = pgMoneyNum(n);
+      return '$' + v.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
     }
 
-    function pgMoneyCard(title) {
-      var c = hwEl('div', 'pg-card');
-      pgMoneySplit.appendChild(c);
-      pgMoneyHead(c, title);
-      return c;
-    }
-
-    function pgMoneyMuted(c, text) {
-      c.appendChild(hwEl('div', 'pg-muted', text));
-    }
-
-    function pgMoneyStat(c, k, v) {
-      var s = hwEl('div', 'pg-stat');
-      s.appendChild(hwEl('span', 'k', k));
-      s.appendChild(hwEl('span', 'v', v));
-      c.appendChild(s);
-      return s;
-    }
-
-    var pgMoneyCardNW = pgMoneyCard('NET WORTH');
-    var pgMoneyCardGoals = pgMoneyCard('GOALS');
-    var pgMoneyCardSubs = pgMoneyCard('SUBSCRIPTIONS');
-    var pgMoneyCardLedger = pgMoneyCard('LEDGER');
-
-    // ---- card 1: NET WORTH ----
-    function pgMoneyRenderNW(money, nw) {
-      var c = pgMoneyCardNW;
-      pgMoneyHead(c, 'NET WORTH');
-
-      if (!money && !nw) {
-        pgMoneyMuted(c, 'Money data unavailable.');
-        return;
-      }
-
-      if (nw && nw.net_worth !== undefined && nw.net_worth !== null) {
-        c.appendChild(hwEl('div', 'pg-big', hwMoney(pgMoneyNum(nw.net_worth))));
-      } else {
-        pgMoneyMuted(c, 'Net worth unavailable.');
-      }
-
-      if (!money) {
-        pgMoneyMuted(c, 'Balance data unavailable.');
-        return;
-      }
-
-      pgMoneyStat(c, 'Cash', hwMoney(pgMoneyNum(money.cash)));
-      pgMoneyStat(c, 'Savings', hwMoney(pgMoneyNum(money.savings)));
-
-      var accts = money.accounts;
-      if (accts && typeof accts === 'object') {
-        for (var acctKey in accts) {
-          if (!Object.prototype.hasOwnProperty.call(accts, acctKey)) continue;
-          pgMoneyStat(c, acctKey, hwMoney(pgMoneyNum(accts[acctKey])));
-        }
-      }
-    }
-
-    // ---- card 2: GOALS ----
-    function pgMoneyRenderGoals(goals) {
-      var c = pgMoneyCardGoals;
-      pgMoneyHead(c, 'GOALS');
-
-      if (!goals) {
-        pgMoneyMuted(c, 'Goals unavailable.');
-        return;
-      }
-      if (!goals.length) {
-        c.appendChild(hwEl('div', 'pg-empty', 'No goals yet.'));
-        return;
-      }
-
-      for (var gi = 0; gi < goals.length; gi++) {
-        var goal = goals[gi] || {};
-        var saved = pgMoneyNum(goal.saved);
-        var target = pgMoneyNum(goal.target);
-
-        c.appendChild(hwEl('div', 'pg-title', hwClean(goal.name || 'Goal')));
-        pgMoneyStat(c, 'Saved', hwMoney(saved) + ' of ' + hwMoney(target));
-
-        var pct = 0;
-        if (target > 0) pct = (saved / target) * 100;
-        if (pct !== pct || pct < 0) pct = 0;
-        if (pct > 100) pct = 100;
-
-        var bar = hwEl('div', 'pg-bar');
-        var fill = hwEl('i', '', '');
-        fill.style.width = pct + '%';
-        bar.appendChild(fill);
-        c.appendChild(bar);
-      }
-    }
-
-    // ---- card 3: SUBSCRIPTIONS ----
-    function pgMoneyRenderSubs(subs) {
-      var c = pgMoneyCardSubs;
-      pgMoneyHead(c, 'SUBSCRIPTIONS');
-
-      if (!subs) {
-        pgMoneyMuted(c, 'Subscriptions unavailable.');
-        return;
-      }
-      if (!subs.length) {
-        c.appendChild(hwEl('div', 'pg-empty', 'No subscriptions.'));
-        return;
-      }
-
-      var monthly = 0;
-      for (var si = 0; si < subs.length; si++) {
-        var sub = subs[si] || {};
-        var amount = pgMoneyNum(sub.amount);
-        var freq = (sub.frequency === undefined || sub.frequency === null) ? '' : String(sub.frequency);
-
-        var srow = hwEl('div', 'pg-row');
-        var smain = hwEl('div', 'pg-main');
-        smain.appendChild(hwEl('div', 'pg-title', hwClean(sub.name || 'Subscription')));
-        smain.appendChild(hwEl('div', 'pg-sub', hwClean(freq) || 'monthly'));
-        srow.appendChild(smain);
-        srow.appendChild(hwEl('div', 'pg-side', hwMoney(amount)));
-        c.appendChild(srow);
-
-        if (freq.toLowerCase() === 'monthly') monthly += amount;
-      }
-
-      pgMoneyStat(c, 'Monthly total', hwMoney(monthly));
-    }
-
-    // ---- card 4: LEDGER ----
-    function pgMoneyRenderLedger(ledger) {
-      var c = pgMoneyCardLedger;
-      pgMoneyHead(c, 'LEDGER');
-
-      if (!ledger) {
-        pgMoneyMuted(c, 'Ledger unavailable.');
-        return;
-      }
-      if (!ledger.length) {
-        c.appendChild(hwEl('div', 'pg-empty', 'No transactions yet.'));
-        return;
-      }
-
-      for (var li = 0; li < ledger.length; li++) {
-        var entry = ledger[li] || {};
-        var desc = entry.description || entry.name || entry.title || entry.desc || entry.category || 'Transaction';
-        var when = entry.date || entry.time || entry.ts || entry.datetime || '';
-        var amt = null;
-        if (entry.amount !== undefined && entry.amount !== null) amt = pgMoneyNum(entry.amount);
-        else if (entry.value !== undefined && entry.value !== null) amt = pgMoneyNum(entry.value);
-
-        var lrow = hwEl('div', 'pg-row');
-        var lmain = hwEl('div', 'pg-main');
-        lmain.appendChild(hwEl('div', 'pg-title', hwClean(desc)));
-        if (when) lmain.appendChild(hwEl('div', 'pg-sub', hwClean(String(when))));
-        lrow.appendChild(lmain);
-        if (amt !== null) lrow.appendChild(hwEl('div', 'pg-side', hwMoney(amt)));
-        c.appendChild(lrow);
-      }
-    }
-
-    function pgMoneyLoad() {
-      return Promise.all([
-        hwJ(pgMoneyAPI + '/money').catch(function () { return null; }),
-        hwJ(pgMoneyAPI + '/money/networth').catch(function () { return null; }),
-        hwJ(pgMoneyAPI + '/money/goals').catch(function () { return null; }),
-        hwJ(pgMoneyAPI + '/money/subscriptions').catch(function () { return null; }),
-        hwJ(pgMoneyAPI + '/money/ledger').catch(function () { return null; })
-      ]).then(function (pgMoneyRes) {
-        pgMoneyRenderNW(pgMoneyRes[0], pgMoneyRes[1]);
-        pgMoneyRenderGoals(pgMoneyRes[2]);
-        pgMoneyRenderSubs(pgMoneyRes[3]);
-        pgMoneyRenderLedger(pgMoneyRes[4]);
-      }).catch(function () {
-        console.log('money page: load failed');
+    function pgMoneyPost(path, body) {
+      return fetch(pgMoneyAPI + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+      }).then(function (r) {
+        // the backend answers with the updated figures; re-render from the source of truth
+        return pgMoneyLoad();
       });
     }
 
+    // second-click confirm: the backend has no undo, so a single stray tap on a delete
+    // button must not remove a real account
+    function pgMoneyDisarm() {
+      if (pgMoneyArmTimer) { clearTimeout(pgMoneyArmTimer); pgMoneyArmTimer = null; }
+      if (pgMoneyArmed && pgMoneyArmed.btn) {
+        pgMoneyArmed.btn.textContent = pgMoneyArmed.btn.dataset.label || 'x';
+        pgMoneyArmed.btn.classList.remove('pg-del-armed');
+      }
+      pgMoneyArmed = null;
+    }
+
+    function pgMoneyArmDelete(btn, run, label) {
+      if (pgMoneyArmed && pgMoneyArmed.btn === btn) {
+        pgMoneyDisarm();
+        run();
+        return;
+      }
+      pgMoneyDisarm();
+      btn.dataset.label = label || 'x';
+      pgMoneyArmed = { btn: btn, run: run };
+      btn.textContent = 'sure?';
+      btn.classList.add('pg-del-armed');
+      pgMoneyArmTimer = setTimeout(pgMoneyDisarm, 4000);
+    }
+
+    // tap the amount to type a new one; Enter/blur commits, Escape cancels
+    function pgMoneyEditable(node, get, save) {
+      node.addEventListener('click', function () {
+        if (node.querySelector('input')) return;
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.step = '0.01';
+        input.min = '0';
+        input.inputMode = 'decimal';
+        input.className = 'money-amt-input';
+        input.value = String(get());
+        var original = node.textContent;
+        node.textContent = '';
+        node.appendChild(input);
+        input.focus();
+        input.select();
+
+        var done = false;
+        function finish(commit) {
+          if (done) return;
+          done = true;
+          var raw = input.value.trim();
+          if (commit && raw !== '' && raw !== String(get())) {
+            save(parseFloat(raw) || 0);
+          } else {
+            node.textContent = original;      // nothing changed: put the text back
+          }
+        }
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+          if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+        });
+        input.addEventListener('blur', function () { finish(true); });
+      });
+    }
+
+    function pgMoneyAddBar(fields, buttonLabel, onAdd) {
+      pgMoneyAddZone.innerHTML = '';
+      var r = hwEl('div', 'r');
+      var inputs = [];
+      for (var i = 0; i < fields.length; i++) {
+        var f = fields[i];
+        var inp = hwEl('input', 'money-in2');
+        inp.placeholder = f.placeholder;
+        if (f.type) inp.type = f.type;
+        if (f.type === 'number') { inp.min = '0'; inp.step = '0.01'; inp.inputMode = 'decimal'; }
+        if (f.flex) inp.style.flex = f.flex;
+        inputs.push(inp);
+        r.appendChild(inp);
+      }
+      var btn = hwEl('button', 'money-in2', buttonLabel);
+      btn.type = 'button';
+      btn.style.flex = '0 0 auto';
+      btn.style.width = 'auto';
+      btn.style.padding = '0 22px';
+      btn.onclick = function () { onAdd(inputs); };
+      r.appendChild(btn);
+      for (var j = 0; j < inputs.length; j++) {
+        inputs[j].addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); onAdd(inputs); }
+        });
+      }
+      pgMoneyAddZone.appendChild(r);
+    }
+
+    function pgMoneyShowError(msg) {
+      pgMoneyPane.innerHTML = '';
+      pgMoneyAddZone.innerHTML = '';
+      pgMoneyPane.appendChild(hwEl('div', 'money-empty', msg));
+    }
+
+    // ---------- OVERVIEW ----------
+    function pgMoneyOverview(d) {
+      var accounts = (d && d.accounts) || {};
+      var keys = Object.keys(accounts).sort();
+      var accTotal = 0;
+      for (var i = 0; i < keys.length; i++) accTotal += pgMoneyNum(accounts[keys[i]]);
+
+      var hero = hwEl('div');
+      hero.id = 'money-hero';
+      var nw = hwEl('div', 'nw', pgMoneyFmt(d.netWorth));
+      hero.appendChild(nw);
+      hero.appendChild(hwEl('div', 'nwl', 'NET WORTH'));
+      pgMoneyPane.appendChild(hero);
+
+      var cards = hwEl('div');
+      cards.id = 'money-cards';
+
+      var cashN = hwEl('div', 'n', pgMoneyFmt(d.cash));
+      var cashCard = hwEl('div', 'money-card');
+      cashCard.appendChild(cashN);
+      var cashL = hwEl('div', 'l');
+      cashL.appendChild(document.createTextNode('CASH'));
+      cashL.appendChild(hwEl('span', 'hint', 'tap to edit'));
+      cashCard.appendChild(cashL);
+
+      var savN = hwEl('div', 'n', pgMoneyFmt(d.savings));
+      var savCard = hwEl('div', 'money-card');
+      savCard.appendChild(savN);
+      var savL = hwEl('div', 'l');
+      savL.appendChild(document.createTextNode('SAVINGS'));
+      savL.appendChild(hwEl('span', 'hint', 'tap to edit'));
+      savCard.appendChild(savL);
+
+      var accCard = hwEl('div', 'money-card');
+      accCard.appendChild(hwEl('div', 'n', String(keys.length)));
+      var accL = hwEl('div', 'l');
+      accL.appendChild(document.createTextNode('ACCOUNTS'));
+      accL.appendChild(hwEl('span', 'hint', pgMoneyFmt(accTotal)));
+      accCard.appendChild(accL);
+
+      cards.appendChild(cashCard);
+      cards.appendChild(savCard);
+      cards.appendChild(accCard);
+      pgMoneyPane.appendChild(cards);
+
+      pgMoneyEditable(cashN, function () { return d.cash; }, function (v) {
+        pgMoneyPost('/asset', { key: 'cash', value: v });
+      });
+      pgMoneyEditable(savN, function () { return d.savings; }, function (v) {
+        pgMoneyPost('/asset', { key: 'savings', value: v });
+      });
+
+      // subs summary line
+      var monthly = 0;
+      for (var s = 0; s < pgMoneySubs.length; s++) {
+        monthly += pgMoneyMonthly(pgMoneySubs[s]);
+      }
+      if (pgMoneySubs.length) {
+        var row = hwEl('div', 'money-acct');
+        var nm = hwEl('span', 'money-name', 'Subscriptions');
+        nm.appendChild(hwEl('span', 'sub', pgMoneySubs.length + ' active'));
+        row.appendChild(nm);
+        var amt = hwEl('span', 'money-amt');
+        amt.appendChild(document.createTextNode(pgMoneyFmt(monthly)));
+        amt.appendChild(hwEl('span', 'sub', '/mo'));
+        row.appendChild(amt);
+        pgMoneyPane.appendChild(row);
+      }
+
+      // accounts: two columns so they all fit without scrolling
+      var grid = hwEl('div', 'money-grid2');
+      for (var ai = 0; ai < keys.length; ai++) {
+        (function (name) {
+          var rec = hwEl('div', 'money-acct');
+          rec.appendChild(hwEl('span', 'money-name', name));
+          var a = hwEl('span', 'money-amt', pgMoneyFmt(accounts[name]));
+          pgMoneyEditable(a, function () { return accounts[name]; }, function (v) {
+            pgMoneyPost('/account', { key: name, value: v });
+          });
+          rec.appendChild(a);
+
+          var del = hwEl('button', 'money-del', 'x');
+          del.type = 'button';
+          del.title = 'Delete account';
+          del.onclick = function () {
+            pgMoneyArmDelete(del, function () {
+              pgMoneyPost('/account/delete', { key: name });
+            });
+          };
+          rec.appendChild(del);
+          grid.appendChild(rec);
+        })(keys[ai]);
+      }
+      if (keys.length) pgMoneyPane.appendChild(grid);
+
+      pgMoneyAddBar([
+        { placeholder: 'New account name' },
+        { placeholder: 'Amount', type: 'number', flex: '0 0 130px' }
+      ], 'ADD', function (ins) {
+        var n = ins[0].value.trim();
+        if (!n) return;
+        pgMoneyPost('/account', { key: n, value: parseFloat(ins[1].value) || 0 });
+      });
+    }
+
+    function pgMoneyMonthly(sub) {
+      var f = String((sub && sub.frequency) || 'monthly').toLowerCase();
+      var amt = pgMoneyNum(sub && sub.amount);
+      if (f.indexOf('week') === 0) return amt * 52 / 12;
+      if (f.indexOf('year') === 0) return amt / 12;
+      return amt;
+    }
+
+    // ---------- GOALS ----------
+    function pgMoneyGoals() {
+      if (!pgMoneyGoalsList.length) {
+        pgMoneyPane.appendChild(hwEl('div', 'money-empty', 'No goals yet.'));
+      }
+      for (var i = 0; i < pgMoneyGoalsList.length; i++) {
+        (function (g) {
+          var rec = hwEl('div', 'money-acct');
+          rec.style.flexDirection = 'column';
+          rec.style.alignItems = 'stretch';
+          rec.style.gap = '10px';
+
+          var top = hwEl('div');
+          top.style.display = 'flex';
+          top.style.alignItems = 'center';
+          top.style.gap = '12px';
+          top.appendChild(hwEl('span', 'money-name', hwClean(g.name)));
+
+          var amt = hwEl('span', 'money-amt', pgMoneyFmt(g.saved) + ' / ' + pgMoneyFmt(g.target));
+          pgMoneyEditable(amt, function () { return g.saved; }, function (v) {
+            pgMoneyPost('/goals', { name: g.name, target: g.target, saved: v });
+          });
+          top.appendChild(amt);
+
+          var del = hwEl('button', 'money-del', 'x');
+          del.type = 'button';
+          del.title = 'Delete goal';
+          del.onclick = function () {
+            pgMoneyArmDelete(del, function () {
+              pgMoneyPost('/goals/delete', { name: g.name });
+            });
+          };
+          top.appendChild(del);
+          rec.appendChild(top);
+
+          var pct = pgMoneyNum(g.target) > 0
+            ? Math.min(100, Math.round((pgMoneyNum(g.saved) / pgMoneyNum(g.target)) * 100))
+            : 0;
+          var bar = hwEl('div', 'pg-bar');
+          var fill = hwEl('i');
+          fill.style.width = pct + '%';
+          bar.appendChild(fill);
+          rec.appendChild(bar);
+          rec.appendChild(hwEl('div', 'money-note', pct + '% of target'));
+
+          pgMoneyPane.appendChild(rec);
+        })(pgMoneyGoalsList[i]);
+      }
+
+      pgMoneyAddBar([
+        { placeholder: 'Goal name' },
+        { placeholder: 'Target', type: 'number', flex: '0 0 120px' },
+        { placeholder: 'Saved', type: 'number', flex: '0 0 120px' }
+      ], 'ADD', function (ins) {
+        if (!ins[0].value.trim()) return;
+        pgMoneyPost('/goals', {
+          name: ins[0].value.trim(),
+          target: parseFloat(ins[1].value) || 0,
+          saved: parseFloat(ins[2].value) || 0
+        });
+      });
+    }
+
+    // ---------- SUBS ----------
+    function pgMoneySubsTab() {
+      if (!pgMoneySubs.length) {
+        pgMoneyPane.appendChild(hwEl('div', 'money-empty', 'No subscriptions yet.'));
+      }
+      var monthlyTotal = 0;
+      for (var i = 0; i < pgMoneySubs.length; i++) {
+        (function (s) {
+          var perMo = pgMoneyMonthly(s);
+          monthlyTotal += perMo;
+
+          var rec = hwEl('div', 'money-acct');
+          var nm = hwEl('span', 'money-name', hwClean(s.name));
+          nm.appendChild(hwEl('span', 'sub', String(s.frequency || 'monthly') + ' \u00b7 ' + pgMoneyFmt(perMo) + '/mo'));
+          rec.appendChild(nm);
+
+          var amt = hwEl('span', 'money-amt', pgMoneyFmt(s.amount));
+          pgMoneyEditable(amt, function () { return s.amount; }, function (v) {
+            pgMoneyPost('/subscriptions', { name: s.name, amount: v, frequency: s.frequency });
+          });
+          rec.appendChild(amt);
+
+          var del = hwEl('button', 'money-del', 'x');
+          del.type = 'button';
+          del.title = 'Delete subscription';
+          del.onclick = function () {
+            pgMoneyArmDelete(del, function () {
+              pgMoneyPost('/subscriptions/delete', { name: s.name });
+            });
+          };
+          rec.appendChild(del);
+          pgMoneyPane.appendChild(rec);
+        })(pgMoneySubs[i]);
+      }
+
+      if (pgMoneySubs.length) {
+        var tot = hwEl('div', 'money-acct');
+        tot.style.borderLeft = '4px solid var(--accent)';
+        var lbl = hwEl('span', 'money-name', 'Monthly total');
+        lbl.style.fontWeight = '700';
+        tot.appendChild(lbl);
+        tot.appendChild(hwEl('span', 'money-amt', pgMoneyFmt(monthlyTotal)));
+        pgMoneyPane.appendChild(tot);
+      }
+
+      pgMoneyAddBar([
+        { placeholder: 'Subscription name' },
+        { placeholder: 'Amount', type: 'number', flex: '0 0 120px' },
+        { placeholder: 'monthly', flex: '0 0 130px' }
+      ], 'ADD', function (ins) {
+        if (!ins[0].value.trim()) return;
+        pgMoneyPost('/subscriptions', {
+          name: ins[0].value.trim(),
+          amount: parseFloat(ins[1].value) || 0,
+          frequency: ins[2].value.trim() || 'monthly'
+        });
+      });
+    }
+
+    // ---------- LEDGER ----------
+    function pgMoneyLedger() {
+      if (!pgMoneyLedgerList.length) {
+        pgMoneyPane.appendChild(hwEl('div', 'money-empty', 'No ledger entries yet.'));
+      }
+      for (var i = 0; i < pgMoneyLedgerList.length; i++) {
+        (function (x) {
+          var isIn = x.type === 'in';
+          var rec = hwEl('div', 'money-led-row');
+          rec.style.borderLeft = '4px solid ' + (isIn ? '#4ade80' : '#f87171');
+
+          var when = hwEl('span', 'money-name', String(x.ts || '').slice(5, 10));
+          when.style.flex = '0 0 auto';
+          when.style.color = 'var(--muted)';
+          when.style.fontSize = '.9rem';
+          rec.appendChild(when);
+
+          rec.appendChild(hwEl('span', 'money-name', hwClean(x.desc || '')));
+
+          var amt = hwEl('span', 'money-amt ' + (isIn ? 'money-in' : 'money-out'),
+            (isIn ? '+' : '-') + pgMoneyFmt(x.amount));
+          amt.style.cursor = 'default';
+          rec.appendChild(amt);
+
+          var del = hwEl('button', 'money-del', 'x');
+          del.type = 'button';
+          del.title = 'Delete entry';
+          del.onclick = function () {
+            pgMoneyArmDelete(del, function () {
+              pgMoneyPost('/ledger/delete', { id: x.id });
+            });
+          };
+          rec.appendChild(del);
+          pgMoneyPane.appendChild(rec);
+        })(pgMoneyLedgerList[i]);
+      }
+
+      pgMoneyPane.appendChild(hwEl('div', 'money-note',
+        'IN adds to cash, OUT subtracts. Newest first.'));
+
+      // the quick IN/OUT bar is this tab's add bar
+      pgMoneyAddZone.innerHTML = '';
+      var r = hwEl('div', 'r');
+      var dIn = hwEl('input', 'money-in2');
+      dIn.placeholder = 'What for?';
+      var aIn = hwEl('input', 'money-in2');
+      aIn.type = 'number';
+      aIn.min = '0.01';
+      aIn.step = '0.01';
+      aIn.inputMode = 'decimal';
+      aIn.placeholder = 'Amount';
+      aIn.style.flex = '0 0 120px';
+
+      var outB = hwEl('button', 'money-in2', 'OUT');
+      outB.type = 'button';
+      outB.style.cssText = 'flex:0 0 auto;width:auto;padding:0 22px;color:#f87171;border-color:rgba(248,113,113,.4)';
+      var inB = hwEl('button', 'money-in2', 'IN');
+      inB.type = 'button';
+      inB.style.cssText = 'flex:0 0 auto;width:auto;padding:0 22px;color:#4ade80;border-color:rgba(74,222,128,.4)';
+
+      function entry(type) {
+        var amt = parseFloat(aIn.value);
+        var desc = dIn.value.trim();
+        if (!desc || !amt || amt <= 0) return;
+        pgMoneyPost('/ledger/add', { type: type, desc: desc, amount: amt });
+      }
+      outB.onclick = function () { entry('out'); };
+      inB.onclick = function () { entry('in'); };
+      dIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); entry('out'); } });
+      aIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); entry('out'); } });
+
+      r.appendChild(dIn);
+      r.appendChild(aIn);
+      r.appendChild(outB);
+      r.appendChild(inB);
+      pgMoneyAddZone.appendChild(r);
+    }
+
+    // ---------- load ----------
+    var pgMoneyGoalsList = [];
+    var pgMoneySubs = [];
+    var pgMoneyLedgerList = [];
+
+    function pgMoneyLoad() {
+      if (!pgMoneyAlive) return;
+      pgMoneyDisarm();
+      return Promise.all([
+        hwJ(pgMoneyAPI).catch(function () { return null; }),
+        hwJ(pgMoneyAPI + '/networth').catch(function () { return null; }),
+        hwJ(pgMoneyAPI + '/goals').catch(function () { return null; }),
+        hwJ(pgMoneyAPI + '/subscriptions').catch(function () { return null; }),
+        hwJ(pgMoneyAPI + '/ledger?limit=30').catch(function () { return null; })
+      ]).then(function (res) {
+        if (!pgMoneyAlive) return;
+        var d = res[0];
+        if (!d) { pgMoneyShowError('Money backend unreachable.'); return; }
+
+        var nw = res[1];
+        d.netWorth = (nw && nw.net_worth !== undefined) ? nw.net_worth
+          : (pgMoneyNum(d.cash) + pgMoneyNum(d.savings) + pgMoneySum(d.accounts));
+
+        pgMoneyGoalsList = Array.isArray(res[2]) ? res[2] : [];
+        pgMoneySubs = Array.isArray(res[3]) ? res[3] : [];
+        pgMoneyLedgerList = Array.isArray(res[4]) ? res[4] : [];
+
+        pgMoneyPane.innerHTML = '';
+        pgMoneyAddZone.innerHTML = '';
+
+        if (pgMoneyTab === 'overview') pgMoneyOverview(d);
+        else if (pgMoneyTab === 'goals') pgMoneyGoals();
+        else if (pgMoneyTab === 'subs') pgMoneySubsTab();
+        else pgMoneyLedger();
+      });
+    }
+
+    function pgMoneySum(accounts) {
+      var t = 0;
+      if (!accounts) return 0;
+      for (var k in accounts) {
+        if (Object.prototype.hasOwnProperty.call(accounts, k)) t += pgMoneyNum(accounts[k]);
+      }
+      return t;
+    }
+
+    var pgMoneyTimer = setInterval(pgMoneyLoad, 60000);
     pgMoneyLoad();
-    pgMoneyTimer = setInterval(pgMoneyLoad, 60000);
 
     return function () {
-      if (pgMoneyTimer) clearInterval(pgMoneyTimer);
-      pgMoneyTimer = null;
+      pgMoneyAlive = false;
+      clearInterval(pgMoneyTimer);
+      if (pgMoneyArmTimer) clearTimeout(pgMoneyArmTimer);
+      pgMoneyArmTimer = null;
     };
   };
 
