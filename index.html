@@ -891,17 +891,62 @@
   .pg-bar { height: 12px; border-radius: 6px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: 8px; }
   .pg-bar i { display: block; height: 100%; background: var(--accent); }
   /* kanban columns */
-  .pg-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: start; }
-  .pg-col { background: rgba(255,255,255,.03); border: 1px solid var(--card-border);
-    border-radius: 14px; padding: 12px; min-height: 120px; }
-  .pg-col-h { display: flex; align-items: baseline; justify-content: space-between;
-    font-size: .95rem; font-weight: 700; letter-spacing: 1px; color: var(--accent); margin-bottom: 10px; }
-  .pg-col-h .n { color: var(--muted); font-weight: 500; }
-  .pg-tcard { padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; cursor: grab;
-    background: rgba(255,255,255,.05); border: 1px solid var(--card-border);
-    font-size: .98rem; color: var(--text); }
+  /* To Do board: fills the window instead of growing past it.
+     The board is a fixed-height flex row of four columns and EACH COLUMN scrolls its own
+     cards (overflow-y on .pg-col-body). Without that the board just grows taller than the
+     window and the whole page scrolls, which is what it used to do. */
+  .pg-todo { height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+  .pg-boardwrap { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+  .pg-board { flex: 1 1 auto; min-height: 0; display: flex; gap: 12px; align-items: stretch; }
+  .pg-col {
+    flex: 1 1 0; min-width: 0; max-height: 100%; overflow: hidden;
+    display: flex; flex-direction: column;
+    background: rgba(255,255,255,.03); border: 1px solid var(--card-border);
+    border-radius: 14px;
+  }
+  .pg-col-h {
+    flex: 0 0 auto; padding: 12px 14px; text-align: center;
+    font-size: 1.15rem; font-weight: 700; letter-spacing: 1px; color: var(--accent);
+    border-bottom: 1px solid var(--card-border);
+  }
+  .pg-col-h .n { display: block; font-size: .9rem; color: var(--muted); font-weight: 600; margin-top: 2px; }
+  /* the scrolling part: this is what keeps the board inside the window.
+     overflow:hidden - NOT auto. There is one custom scrollbar for the whole board (the
+     rail below), and all four columns are driven by it together, so they can never drift
+     out of step with each other. scrollTop still works on an overflow:hidden element,
+     which is how the columns are moved. */
+  .pg-col-body {
+    flex: 1 1 auto; min-height: 0; overflow: hidden;
+    padding: 10px; display: flex; flex-direction: column; gap: 10px;
+  }
+  /* ---- our own scroll, one for the whole board ---- */
+  .pg-rail {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 18px;
+    border-radius: 9px; background: rgba(255,255,255,.07);
+    border: 1px solid var(--card-border); touch-action: none;
+  }
+  .pg-rail.off { display: none; }
+  .pg-rail-thumb {
+    position: absolute; left: 2px; right: 2px; min-height: 56px;
+    border-radius: 9px; background: rgba(110,231,183,.55);
+    border: 1px solid rgba(110,231,183,.7); cursor: grab; touch-action: none;
+  }
+  .pg-rail-thumb:hover { background: rgba(110,231,183,.75); }
+  .pg-rail-thumb.grabbing { background: var(--accent); cursor: grabbing; }
+  .pg-tcard {
+    flex: 0 0 auto; padding: 12px 13px; border-radius: 10px; cursor: grab;
+    background: rgba(20,35,26,.9); border: 1px solid var(--card-border);
+    font-size: 1.05rem; color: var(--text); line-height: 1.35; word-break: break-word;
+  }
   .pg-tcard:hover { border-color: rgba(110,231,183,.5); }
-  .pg-col.drop-hover { border-color: rgba(110,231,183,.7); background: rgba(110,231,183,.1); }
+  .pg-tcard.dragging { opacity: .4; }
+  .pg-col.drop-hover { border-color: var(--accent); background: rgba(110,231,183,.07); }
+  .pg-col-body.drop-hover { background: rgba(110,231,183,.07); }
+  /* priority colours, carried over from the previous mirror */
+  .pg-col.p0 .pg-col-h { color: #ef4444; }
+  .pg-col.p1 .pg-col-h { color: #f97316; }
+  .pg-col.p2 .pg-col-h { color: #f59e0b; }
+  .pg-col.p3 .pg-col-h { color: #eab308; }
   /* week strip (countdown / school) */
   .pg-wk { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
   .pg-wkd { text-align: center; padding: 8px 4px; border-radius: 10px;
@@ -3023,36 +3068,78 @@
 
   // ====== APP PAGES (generated) ======
 
-  // ---- kanban ----
   // ---- kanban (To Do) ----
+  // The board FITS INSIDE the window: four fixed-height columns, and ONE custom
+  // scrollbar for the whole board rather than a native scrollbar per column.
+  //
+  // Why one rail instead of four: separate per-column scrollbars meant four independent
+  // positions and four native bars, which looked heavy and let the columns drift out of
+  // step. Here a single rail drives every column together, so the board always reads as
+  // one surface. Dragging the thumb, flicking the wheel over the board, or dragging on
+  // the background all move all four at once.
+  //
+  // Columns are P0-P3 (the priorities that actually get used). P4-P9 is counted below the
+  // board rather than shown, so the four columns keep their space.
+  //
+  // Carried over from the previous mirror: priority-coloured headers, A-Z order within a
+  // column, drag between columns, click a card to tick it off.
   HW_PAGE['kanban'] = function (host) {
-    var PGK_BASE = 'http://localhost:2008/api';
+    var PGK_API = 'http://localhost:2008/api/tasks';
     var PGK_COLS = 4;
 
     host.innerHTML = '';
 
-    var wrap = hwEl('div', 'pg-wrap');
+    var pgkRoot = hwEl('div', 'pg-todo');
+    pgkRoot.style.position = 'relative';       // the rail is positioned against this
 
-    var bar = hwEl('div', 'pg-addbar');
-    var inp = hwEl('input', 'pg-input');
-    inp.type = 'text';
-    inp.placeholder = 'Add a task...';
-    var btn = hwEl('button', 'pg-btn', '+');
-    bar.appendChild(inp);
-    bar.appendChild(btn);
-    wrap.appendChild(bar);
+    // ---- add bar ----
+    var pgkBar = hwEl('div', 'pg-addbar');
+    var pgkInput = hwEl('input', 'pg-input');
+    pgkInput.type = 'text';
+    pgkInput.placeholder = 'Add a task...';
+    var pgkAddBtn = hwEl('button', 'pg-btn', '+');
+    pgkAddBtn.type = 'button';
+    pgkBar.appendChild(pgkInput);
+    pgkBar.appendChild(pgkAddBtn);
+    pgkRoot.appendChild(pgkBar);
 
-    var boardHost = hwEl('div');
-    wrap.appendChild(boardHost);
+    // ---- board area ----
+    var pgkWrap = hwEl('div', 'pg-boardwrap');
+    var pgkBoardHost = hwEl('div');
+    pgkBoardHost.style.cssText = 'flex:1 1 auto;min-height:0;display:flex;gap:12px;padding-right:26px';
+    var pgkBoard = hwEl('div', 'pg-board');
+    pgkBoard.style.flex = '1 1 auto';
+    pgkBoardHost.appendChild(pgkBoard);
 
-    host.appendChild(wrap);
+    // the single rail, alongside the whole board
+    var pgkRail = hwEl('div', 'pg-rail');
+    var pgkThumb = hwEl('div', 'pg-rail-thumb');
+    pgkThumb.style.top = '0px';
+    pgkThumb.style.height = '56px';
+    pgkRail.appendChild(pgkThumb);
+    pgkBoardHost.appendChild(pgkRail);
+
+    pgkWrap.appendChild(pgkBoardHost);
+
+    var pgkMore = hwEl('div', 'pg-muted');
+    pgkMore.style.display = 'none';
+    pgkWrap.appendChild(pgkMore);
+
+    pgkRoot.appendChild(pgkWrap);
+    host.appendChild(pgkRoot);
 
     var pgkDragId = null;
-    var pgkSuppressClick = false;
     var pgkAlive = true;
+    var pgkSuppressClick = false;
+    var pgkBodies = [];            // every column's scrolling body, moved together
+    var pgkMaxScroll = 0;
+    var pgkScroll = 0;
+    var pgkRailDrag = null;        // { startY, startScroll }
+    var pgkFlick = null;           // { y, scroll } for wheel/touch flicking
+    var pgkRailHideTimer = null;
 
     function pgkPost(path, body) {
-      return fetch(PGK_BASE + path, {
+      return fetch(PGK_API + path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -3063,7 +3150,7 @@
       return Object.prototype.toString.call(x) === '[object Array]';
     }
 
-    // [P0]..[P9] tag -> 0-9, no tag -> 9
+    // [P0]..[P9] tag -> 0-9, no tag -> 9 (untagged tasks are lowest priority)
     function pgkPrio(title) {
       var m = String(title === undefined || title === null ? '' : title).match(/\[P(\d+)\]/i);
       if (m) {
@@ -3073,23 +3160,164 @@
       return 9;
     }
 
-    function pgkBoardFail() {
-      boardHost.innerHTML = '';
-      boardHost.appendChild(hwEl('div', 'pg-empty', 'Could not load tasks'));
+    // ---------- the one scroll ----------
+    // Every column's scrollTop is set to the same value, so they cannot drift apart.
+    function pgkApplyScroll() {
+      if (!pgkAlive) return;
+      if (pgkScroll < 0) pgkScroll = 0;
+      if (pgkScroll > pgkMaxScroll) pgkScroll = pgkMaxScroll;
+      for (var i = 0; i < pgkBodies.length; i++) {
+        if (pgkBodies[i].scrollTop !== pgkScroll) pgkBodies[i].scrollTop = pgkScroll;
+      }
+      pgkPaintThumb();
     }
 
+    function pgkMeasure() {
+      // A column that has not been laid out yet reports clientHeight 0, and then
+      // scrollHeight - clientHeight is meaningless. Bail out and try again next frame
+      // rather than concluding "nothing to scroll" and hiding the rail.
+      var laidOut = false;
+      for (var k = 0; k < pgkBodies.length; k++) {
+        if (pgkBodies[k].clientHeight > 0) { laidOut = true; break; }
+      }
+      if (!laidOut) {
+        requestAnimationFrame(pgkMeasure);
+        return;
+      }
+
+      // the tallest column decides how far there is to scroll
+      var max = 0;
+      for (var i = 0; i < pgkBodies.length; i++) {
+        var over = pgkBodies[i].scrollHeight - pgkBodies[i].clientHeight;
+        if (over > max) max = over;
+      }
+      pgkMaxScroll = max;
+
+      var track = pgkRail.clientHeight;
+      var visible = pgkBodies.length ? pgkBodies[0].clientHeight : 0;
+      var content = visible + pgkMaxScroll;
+      var thumbH = 56;
+      if (content > 0 && track > 0) {
+        thumbH = Math.max(48, Math.round(track * (visible / content)));
+        if (thumbH > track) thumbH = track;
+      }
+      pgkThumb.style.height = thumbH + 'px';
+
+      // nothing to scroll: hide the rail entirely rather than show a full-length bar
+      if (pgkMaxScroll <= 0) {
+        pgkRail.className = 'pg-rail off';
+      } else {
+        pgkRail.className = 'pg-rail';
+      }
+      pgkPaintThumb();
+    }
+
+    function pgkPaintThumb() {
+      var track = pgkRail.clientHeight;
+      var thumbH = pgkThumb.offsetHeight || 56;
+      var travel = track - thumbH;
+      var ratio = pgkMaxScroll > 0 ? (pgkScroll / pgkMaxScroll) : 0;
+      if (ratio < 0) ratio = 0;
+      if (ratio > 1) ratio = 1;
+      pgkThumb.style.top = Math.round(travel * ratio) + 'px';
+    }
+
+    function pgkScrollBy(delta) {
+      pgkMeasure();                 // cheap, and covers a measurement that ran too early
+      pgkScroll += delta;
+      pgkApplyScroll();
+    }
+
+    // ---------- rail thumb dragging ----------
+    pgkThumb.addEventListener('pointerdown', function (e) {
+      pgkMeasure();
+      if (pgkMaxScroll <= 0) return;
+      e.preventDefault();
+      e.stopPropagation();                      // must not start a card drag
+      try { pgkThumb.setPointerCapture(e.pointerId); } catch (err) {}
+      pgkThumb.className = 'pg-rail-thumb grabbing';
+      pgkRailDrag = { startY: e.clientY, startScroll: pgkScroll };
+    });
+
+    pgkThumb.addEventListener('pointermove', function (e) {
+      if (!pgkRailDrag) return;
+      e.preventDefault();
+      var track = pgkRail.clientHeight;
+      var thumbH = pgkThumb.offsetHeight || 56;
+      var travel = track - thumbH;
+      if (travel <= 0) return;
+      var moved = e.clientY - pgkRailDrag.startY;
+      pgkScroll = pgkRailDrag.startScroll + (moved / travel) * pgkMaxScroll;
+      pgkApplyScroll();
+    });
+
+    function pgkRailUp(e) {
+      if (!pgkRailDrag) return;
+      pgkRailDrag = null;
+      pgkThumb.className = 'pg-rail-thumb';
+      try { pgkThumb.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+    pgkThumb.addEventListener('pointerup', pgkRailUp);
+    pgkThumb.addEventListener('pointercancel', pgkRailUp);
+
+    // ---------- wheel / trackpad over the board ----------
+    // Non-passive so the flick can be swallowed without scrolling the page behind it.
+    pgkBoardHost.addEventListener('wheel', function (e) {
+      pgkMeasure();
+      if (pgkMaxScroll <= 0) return;
+      e.preventDefault();
+      pgkScrollBy(e.deltaY);
+    }, { passive: false });
+
+    // ---------- touch flick on the board ----------
+    pgkBoardHost.addEventListener('touchstart', function (e) {
+      pgkMeasure();
+      if (pgkMaxScroll <= 0 || !e.touches.length) return;
+      pgkFlick = { y: e.touches[0].clientY, scroll: pgkScroll };
+    }, { passive: true });
+
+    pgkBoardHost.addEventListener('touchmove', function (e) {
+      if (!pgkFlick || !e.touches.length || pgkMaxScroll <= 0) return;
+      e.preventDefault();
+      pgkScroll = pgkFlick.scroll + (pgkFlick.y - e.touches[0].clientY);
+      pgkApplyScroll();
+    }, { passive: false });
+
+    pgkBoardHost.addEventListener('touchend', function () { pgkFlick = null; }, { passive: true });
+
+    // ---------- data ----------
     function pgkLoad() {
-      hwJ(PGK_BASE + '/tasks').then(function (data) {
+      hwJ(PGK_API).then(function (data) {
         if (!pgkAlive) { return; }
         pgkRender(data);
       }).catch(function () {
         if (!pgkAlive) { return; }
-        pgkBoardFail();
+        pgkBoard.innerHTML = '';
+        pgkBodies = [];
+        pgkBoard.appendChild(hwEl('div', 'pg-empty', 'Could not load tasks.'));
+        pgkMeasure();
       });
     }
 
+    function pgkClearHover() {
+      var all = pgkBoard.getElementsByClassName('pg-col');
+      for (var i = 0; i < all.length; i++) {
+        all[i].className = all[i].className.replace(/\s*drop-hover/, '');
+      }
+      var bodies = pgkBoard.getElementsByClassName('pg-col-body');
+      for (var j = 0; j < bodies.length; j++) {
+        bodies[j].className = bodies[j].className.replace(/\s*drop-hover/, '');
+      }
+    }
+
+    function pgkHover(col, body) {
+      pgkClearHover();
+      col.className = col.className + ' drop-hover';
+      body.className = body.className + ' drop-hover';
+    }
+
     function pgkBuildCol(num, items) {
-      var col = hwEl('div', 'pg-col');
+      var col = hwEl('div', 'pg-col p' + num);
       col.setAttribute('data-prio', String(num));
 
       var head = hwEl('div', 'pg-col-h');
@@ -3098,63 +3326,61 @@
       col.appendChild(head);
 
       var body = hwEl('div', 'pg-col-body');
-      body.setAttribute('data-prio', String(num));
 
-      var i;
-      for (i = 0; i < items.length; i++) {
+      if (!items.length) {
+        var e = hwEl('div', 'pg-empty', 'empty');
+        e.style.padding = '10px 0';
+        body.appendChild(e);
+      }
+
+      for (var i = 0; i < items.length; i++) {
         (function (task) {
           var card = hwEl('div', 'pg-tcard', hwClean(task.title));
           card.setAttribute('draggable', 'true');
           card.setAttribute('data-id', String(task.id));
+          card.title = 'Drag to another column, or click to tick off';
 
           card.addEventListener('dragstart', function (e) {
             pgkDragId = task.id;
+            card.className = 'pg-tcard dragging';
             if (e && e.dataTransfer) {
               try {
                 e.dataTransfer.setData('text/plain', String(task.id));
                 e.dataTransfer.effectAllowed = 'move';
-              } catch (err) { /* ignore */ }
+              } catch (err) { /* some browsers refuse; the id is in pgkDragId anyway */ }
             }
           });
 
           card.addEventListener('dragend', function () {
+            card.className = 'pg-tcard';
             pgkDragId = null;
             pgkSuppressClick = true;
             setTimeout(function () { pgkSuppressClick = false; }, 250);
             pgkClearHover();
           });
 
+          // click ticks the task off - a drag must not be mistaken for a click
           card.addEventListener('click', function () {
             if (pgkSuppressClick || pgkDragId !== null) { return; }
-            pgkPost('/tasks/toggle', { id: task.id }).then(function () {
-              return pgkLoad();
-            }).catch(function () { /* keep board as-is */ });
+            pgkPost('/toggle', { id: task.id }).then(pgkLoad).catch(function () { pgkLoad(); });
           });
 
           body.appendChild(card);
         })(items[i]);
       }
 
-      if (items.length === 0) {
-        body.appendChild(hwEl('div', 'pg-muted', 'No tasks'));
-      }
-
       body.addEventListener('dragover', function (e) {
         if (pgkDragId === null) { return; }
         e.preventDefault();
         if (e.dataTransfer) { e.dataTransfer.dropEffect = 'move'; }
-        pgkAddHover(body);
+        pgkHover(col, body);
       });
 
       body.addEventListener('dragleave', function (e) {
         var r = body.getBoundingClientRect();
-        if (e && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
-          return;
-        }
-        body.className = 'pg-col-body';
-        if (body.parentNode && body.parentNode.className) {
-          body.parentNode.className = 'pg-col';
-        }
+        if (e && e.clientX >= r.left && e.clientX <= r.right
+              && e.clientY >= r.top && e.clientY <= r.bottom) { return; }
+        pgkClearHover();
       });
 
       body.addEventListener('drop', function (e) {
@@ -3166,39 +3392,11 @@
         }
         pgkDragId = null;
         if (id === null || id === '') { return; }
-        pgkPost('/tasks/priority', { id: id, priority: num }).then(function () {
-          return pgkLoad();
-        }).catch(function () { return pgkLoad(); });
+        pgkPost('/priority', { id: id, priority: num }).then(pgkLoad).catch(function () { pgkLoad(); });
       });
 
       col.appendChild(body);
       return col;
-    }
-
-    function pgkClearHover() {
-      var all = boardHost.getElementsByClassName('pg-col-body');
-      var i;
-      for (i = 0; i < all.length; i++) {
-        all[i].className = 'pg-col-body';
-        if (all[i].parentNode && all[i].parentNode.className) {
-          all[i].parentNode.className = 'pg-col';
-        }
-      }
-    }
-
-    function pgkAddHover(node) {
-      var all = boardHost.getElementsByClassName('pg-col-body');
-      var i;
-      for (i = 0; i < all.length; i++) {
-        all[i].className = 'pg-col-body';
-        if (all[i].parentNode && all[i].parentNode.className) {
-          all[i].parentNode.className = 'pg-col';
-        }
-      }
-      node.className = 'pg-col-body drop-hover';
-      if (node.parentNode && node.parentNode.className) {
-        node.parentNode.className = 'pg-col drop-hover';
-      }
     }
 
     function pgkRender(data) {
@@ -3206,60 +3404,82 @@
       var cols = [[], [], [], []];
       var lower = 0;
       var i;
+
       for (i = 0; i < tasks.length; i++) {
         var t = tasks[i];
-        if (!t || t.done !== false) { continue; }
+        if (!t || t.done !== false) { continue; }     // only open tasks go on the board
         var p = pgkPrio(t.title);
-        if (p < PGK_COLS) {
-          cols[p].push(t);
-        } else {
-          lower++;
-        }
+        if (p < PGK_COLS) { cols[p].push(t); } else { lower++; }
       }
 
-      boardHost.innerHTML = '';
+      // A-Z inside each column, matching the previous mirror
+      for (i = 0; i < cols.length; i++) {
+        cols[i].sort(function (a, b) {
+          var x = hwClean(a.title).toLowerCase();
+          var y = hwClean(b.title).toLowerCase();
+          return x < y ? -1 : (x > y ? 1 : 0);
+        });
+      }
 
-      var board = hwEl('div', 'pg-board');
+      pgkBoard.innerHTML = '';
+      pgkBodies = [];
       for (i = 0; i < PGK_COLS; i++) {
-        board.appendChild(pgkBuildCol(i, cols[i]));
+        var col = pgkBuildCol(i, cols[i]);
+        pgkBoard.appendChild(col);
+        pgkBodies.push(col.querySelector('.pg-col-body'));
       }
-      boardHost.appendChild(board);
 
       if (lower > 0) {
-        boardHost.appendChild(hwEl('div', 'pg-muted', String(lower) + ' more task' + (lower === 1 ? '' : 's') + ' at lower priority'));
+        pgkMore.style.display = '';
+        pgkMore.textContent = lower + (lower === 1 ? ' more task' : ' more tasks')
+          + ' at lower priority (P4+)';
+      } else {
+        pgkMore.style.display = 'none';
+        pgkMore.textContent = '';
       }
+
+      // keep the standing scroll position, then re-measure for the new content.
+      // Double rAF: the columns have no measurable height until the browser has laid
+      // them out, which has not happened yet at the end of this function.
+      for (i = 0; i < pgkBodies.length; i++) { pgkBodies[i].scrollTop = pgkScroll; }
+      requestAnimationFrame(function () { requestAnimationFrame(pgkMeasure); });
     }
 
     function pgkAdd() {
-      var title = String(inp.value || '').replace(/^\s+|\s+$/g, '');
-      if (title === '') { return; }
-      inp.value = '';
-      pgkPost('/tasks/add', { title: title }).then(function () {
-        return pgkLoad();
-      }).catch(function () {
-        boardHost.innerHTML = '';
-        boardHost.appendChild(hwEl('div', 'pg-empty', 'Could not add task'));
+      var title = String(pgkInput.value || '').trim();
+      if (!title) { return; }
+      pgkInput.value = '';
+      pgkPost('/add', { title: title }).then(pgkLoad).catch(function () {
+        pgkBoard.innerHTML = '';
+        pgkBodies = [];
+        pgkBoard.appendChild(hwEl('div', 'pg-empty', 'Could not add task.'));
+        pgkMeasure();
       });
     }
 
-    btn.addEventListener('click', pgkAdd);
-    inp.addEventListener('keydown', function (e) {
-      var key = e.key || e.keyCode;
-      if (key === 'Enter' || key === 13) {
-        e.preventDefault();
-        pgkAdd();
-      }
+    pgkAddBtn.onclick = pgkAdd;
+    pgkInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); pgkAdd(); }
     });
 
-    pgkLoad();
+    // keep the rail honest through window resizes
+    function pgkOnResize() { pgkMeasure(); }
+    window.addEventListener('resize', pgkOnResize);
 
-    var timer = setInterval(function () {
+    pgkLoad();
+    // first measure needs a frame: the columns have no height until they are laid out
+    setTimeout(pgkMeasure, 60);
+
+    // refresh occasionally, but never while a card is mid-drag (that would yank it away)
+    var pgkTimer = setInterval(function () {
       if (pgkDragId === null) { pgkLoad(); }
     }, 60000);
 
     return function () {
       pgkAlive = false;
-      clearInterval(timer);
+      clearInterval(pgkTimer);
+      window.removeEventListener('resize', pgkOnResize);
+      if (pgkRailHideTimer) clearTimeout(pgkRailHideTimer);
     };
   };
 
