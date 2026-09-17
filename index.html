@@ -625,10 +625,10 @@
   #sc-wx-err { font-size: .85rem; color: #fca5a5; }
 
   /* ============ HOME: expanded window ============
-     Swipe up (or click the up arrow) and the orb parks in the top-right corner, small,
-     while a window opens in the space it left. Swipe down / the down arrow / Escape puts
-     it back. The geometry itself is driven by layoutHome() in the JS, which owns the
-     orb's position on home — this is only the pre-JS default and the arrow/window chrome. */
+     Swipe up, drag up, wheel up or press the up arrow and the orb parks in the top-right
+     corner, small, while a window opens in the space it left. The reverse puts it back.
+     The geometry is driven by layoutHome() in the JS, which owns the orb's position on
+     home — this is only the pre-JS default and the window chrome. */
   #hw-window {
     position: absolute; left: 50%; top: 46vh;
     transform: translate(-50%, -50%) scale(.94);
@@ -650,30 +650,11 @@
   }
   #hw-window .empty { color: var(--muted); font-size: 1.3rem; letter-spacing: 1px; }
 
-  /* the up/down arrow. Sits under the orb when collapsed; top-right, under the parked
-     orb, when expanded. */
-  #hw-arrow {
-    position: absolute; left: 50%; top: 50%;
-    transform: translate(-50%, -50%);
-    width: 64px; height: 64px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(10,20,14,.8); border: 1px solid var(--card-border);
-    color: var(--accent); cursor: pointer; z-index: 5;
-    box-shadow: 0 8px 26px rgba(0,0,0,.5); backdrop-filter: blur(8px);
-    transition: background .18s var(--ease), transform .18s var(--ease),
-                left .44s cubic-bezier(.22,1,.36,1), top .44s cubic-bezier(.22,1,.36,1);
-  }
-  #hw-arrow:hover { background: rgba(110,231,183,.26); }
-  #hw-arrow:active { transform: translate(-50%, -50%) scale(.94); }
-  #hw-arrow svg { display: block; transition: transform .3s var(--ease); }
-  /* flipped to a down arrow once the window is open */
-  body.home.hw-open #hw-arrow svg { transform: rotate(180deg); }
-
-  /* on a hub that is not home the arrow has nothing to do */
-  body:not(.home) #hw-arrow, body:not(.home) #hw-window { display: none; }
+  /* on a hub that is not home the window has nothing to show */
+  body:not(.home) #hw-window { display: none; }
 
   @media (prefers-reduced-motion: reduce) {
-    #hw-window, #hw-arrow { transition: opacity .12s linear !important; }
+    #hw-window { transition: opacity .12s linear !important; }
     #hw-window { transform: translate(-50%, -50%) !important; }
   }
 
@@ -854,17 +835,11 @@
       <div id="orb-label">READY</div>
     </div>
 
-    <!-- Swipe up / click the arrow: the orb parks top-right and this window opens in the
-         space it left. Empty for now. -->
+    <!-- Swipe up / drag up / wheel up / ArrowUp: the orb parks top-right and this window
+         opens in the space it left. Empty for now. -->
     <div id="hw-window" class="anim">
       <div class="empty">Window</div>
     </div>
-
-    <button id="hw-arrow" class="anim" title="Expand / collapse">
-      <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor">
-        <path d="M12 5l7 7-1.4 1.4L13 8.8V19h-2V8.8L6.4 13.4 5 12z"/>
-      </svg>
-    </button>
 
     <div id="vc-panel" class="anim">
       <div id="vc-head"><span id="vc-ind"></span><span id="vc-title">Padawan</span><span id="vc-state">READY</span></div>
@@ -2553,17 +2528,14 @@
     const pillTop = Math.max(cr.bottom + gap, clockTop + vmin * 0.14);
     const pillBottom = pillTop + pillH;
 
-    // the orb has the rest of the screen, minus a strip at the bottom for the arrow.
-    // Reserving it here (rather than placing the arrow after the fact) is what stops the
-    // arrow hanging off the bottom of the screen when the orb fills the viewport.
-    const arrowStrip = Math.max(56, vmin * 0.075);
+    // the orb takes the rest of the screen down to a small bottom margin
     const orbTop = pillBottom + gap;
-    const orbBottom = vh - gap - arrowStrip;
+    const orbBottom = vh - gap - vmin * 0.04;
     const orbSize = Math.max(vmin * 0.22,
       Math.min(vmin * 0.70, orbBottom - orbTop, vw * 0.56));
     return {
       vw: vw, vh: vh, vmin: vmin, pillTop: pillTop, pillBottom: pillBottom,
-      orbCy: (orbTop + orbBottom) / 2, orbSize: orbSize, arrowStrip: arrowStrip,
+      orbCy: (orbTop + orbBottom) / 2, orbSize: orbSize,
       // the vertical middle of the top block (clock + pill). The parked orb lines up
       // with this so the top row reads as one band instead of two unrelated things.
       clockTop: clockTop,
@@ -2583,7 +2555,6 @@
     const expanded = (typeof hwOpen !== 'undefined') && hwOpen;
     const pill = document.getElementById('spotify-pill');
     const winEl = document.getElementById('hw-window');
-    const arrowEl = document.getElementById('hw-arrow');
     const wrap = document.getElementById('orbwrap');
 
     if (expanded) {
@@ -2608,17 +2579,12 @@
         glow.style.width = Math.round(size * 1.38) + 'px';
         glow.style.height = Math.round(size * 1.38) + 'px';
       }
-      if (arrowEl) {
-        // arrow tucks directly under the parked orb, same x
-        arrowEl.style.left = Math.round(cx) + 'px';
-        arrowEl.style.top = Math.round(cy + size / 2 + 40) + 'px';
-      }
       if (winEl) {
         // The window is CENTRED on the viewport axis (same as the clock and pill above it)
-        // and centred vertically in the space below the orb/arrow. It is capped short of
-        // the full band so the centring is visible as an even gap above and below, rather
+        // and centred vertically in the space below the orb. It is capped short of the
+        // full band so the centring is visible as an even gap above and below, rather
         // than the window hugging the top with all the slack at the bottom.
-        const bandTop = Math.max(g.pillBottom + 14, cy + size / 2 + 40 + 32 + 14);
+        const bandTop = Math.max(g.pillBottom + 14, cy + size / 2 + 20);
         const bandBot = g.vh - 24;
         const bandH = Math.max(240, bandBot - bandTop);
         const winH = Math.min(bandH, 660);                 // capped so the gap is even
@@ -2652,17 +2618,12 @@
       glow.style.width = Math.round(size * 1.38) + 'px';
       glow.style.height = Math.round(size * 1.38) + 'px';
     }
-    if (arrowEl) {
-      // sits in the strip reserved under the orb, centred
-      arrowEl.style.left = (shrink ? '22vw' : '50%');
-      arrowEl.style.top = Math.round(cy + size / 2 + g.arrowStrip / 2) + 'px';
-    }
   }
   window.layoutHome = layoutHome;
 
   // ================= home: expand / collapse =================
-  // Swipe up (or the up arrow) parks the orb in the top-right corner and opens a window
-  // in the space it left; swipe down / the down arrow / Escape puts it back.
+  // Swipe up, drag up, wheel up or press ArrowUp: the orb parks in the top-right corner
+  // and a window opens in the space it left. The reverse gesture puts it back.
   //
   // The window is intentionally empty for now — it is the container the next screens get
   // built into. layoutHome() above does the geometry; this only owns the flag.
@@ -2674,15 +2635,7 @@
     document.body.classList.toggle('hw-open', open);
     layoutHome();
   }
-  const hwToggle = () => hwSet(!hwOpen);
 
-  const hwArrowEl = document.getElementById('hw-arrow');
-  if (hwArrowEl) {
-    hwArrowEl.addEventListener('click', function (ev) {
-      ev.stopPropagation();
-      hwToggle();
-    });
-  }
   // the empty window does not close on click (it will hold controls later)
   const hwWinEl = document.getElementById('hw-window');
   if (hwWinEl) hwWinEl.addEventListener('click', function (ev) { ev.stopPropagation(); });
