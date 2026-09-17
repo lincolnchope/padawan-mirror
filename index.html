@@ -624,6 +624,59 @@
   .sc-wxd .t .lo { color: var(--muted); font-weight: 500; }
   #sc-wx-err { font-size: .85rem; color: #fca5a5; }
 
+  /* ============ HOME: expanded window ============
+     Swipe up (or click the up arrow) and the orb parks in the top-right corner, small,
+     while a window opens in the space it left. Swipe down / the down arrow / Escape puts
+     it back. The geometry itself is driven by layoutHome() in the JS, which owns the
+     orb's position on home — this is only the pre-JS default and the arrow/window chrome. */
+  #hw-window {
+    position: absolute; left: 50%; top: 46vh;
+    transform: translate(-50%, -50%) scale(.94);
+    width: min(84vw, 1180px); height: min(56vh, 560px);
+    background: rgba(8,20,13,.86);
+    border: 1px solid rgba(110,231,183,.28);
+    border-radius: 24px;
+    box-shadow: 0 24px 70px rgba(0,0,0,.6);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity .34s var(--ease), transform .44s cubic-bezier(.22,1,.36,1),
+                visibility 0s linear .44s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  body.home.hw-open #hw-window {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+    transition: opacity .34s var(--ease), transform .44s cubic-bezier(.22,1,.36,1),
+                visibility 0s linear 0s;
+  }
+  #hw-window .empty { color: var(--muted); font-size: 1.3rem; letter-spacing: 1px; }
+
+  /* the up/down arrow. Sits under the orb when collapsed; top-right, under the parked
+     orb, when expanded. */
+  #hw-arrow {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 64px; height: 64px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(10,20,14,.8); border: 1px solid var(--card-border);
+    color: var(--accent); cursor: pointer; z-index: 5;
+    box-shadow: 0 8px 26px rgba(0,0,0,.5); backdrop-filter: blur(8px);
+    transition: background .18s var(--ease), transform .18s var(--ease),
+                left .44s cubic-bezier(.22,1,.36,1), top .44s cubic-bezier(.22,1,.36,1);
+  }
+  #hw-arrow:hover { background: rgba(110,231,183,.26); }
+  #hw-arrow:active { transform: translate(-50%, -50%) scale(.94); }
+  #hw-arrow svg { display: block; transition: transform .3s var(--ease); }
+  /* flipped to a down arrow once the window is open */
+  body.home.hw-open #hw-arrow svg { transform: rotate(180deg); }
+
+  /* on a hub that is not home the arrow has nothing to do */
+  body:not(.home) #hw-arrow, body:not(.home) #hw-window { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #hw-window, #hw-arrow { transition: opacity .12s linear !important; }
+    #hw-window { transform: translate(-50%, -50%) !important; }
+  }
+
   /* the clock/date/agenda are the handle for this window */
   body.home #clockbox { cursor: pointer; }
   body.home #clockbox:hover .t { color: var(--accent); }
@@ -800,6 +853,18 @@
       <canvas id="orb"></canvas>
       <div id="orb-label">READY</div>
     </div>
+
+    <!-- Swipe up / click the arrow: the orb parks top-right and this window opens in the
+         space it left. Empty for now. -->
+    <div id="hw-window" class="anim">
+      <div class="empty">Window</div>
+    </div>
+
+    <button id="hw-arrow" class="anim" title="Expand / collapse">
+      <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor">
+        <path d="M12 5l7 7-1.4 1.4L13 8.8V19h-2V8.8L6.4 13.4 5 12z"/>
+      </svg>
+    </button>
 
     <div id="vc-panel" class="anim">
       <div id="vc-head"><span id="vc-ind"></span><span id="vc-title">Padawan</span><span id="vc-state">READY</span></div>
@@ -2253,6 +2318,8 @@
       const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA');
       if (scOpen) { scCloseWindow(); return; }
       if (spPlayerOpen) { spClosePlayer(); return; }
+      // collapsed the expanded home window before backing out of the page
+      if (typeof hwOpen !== 'undefined' && hwOpen) { hwSet(false); return; }
       if (typing && t.value) return;   // let a field's own Escape handler win
       orbUp();
     }
@@ -2486,14 +2553,17 @@
     const pillTop = Math.max(cr.bottom + gap, clockTop + vmin * 0.14);
     const pillBottom = pillTop + pillH;
 
-    // the orb has the rest of the screen down to a small bottom margin
+    // the orb has the rest of the screen, minus a strip at the bottom for the arrow.
+    // Reserving it here (rather than placing the arrow after the fact) is what stops the
+    // arrow hanging off the bottom of the screen when the orb fills the viewport.
+    const arrowStrip = Math.max(56, vmin * 0.075);
     const orbTop = pillBottom + gap;
-    const orbBottom = vh - gap - vmin * 0.04;      // small breathing room under the orb
+    const orbBottom = vh - gap - arrowStrip;
     const orbSize = Math.max(vmin * 0.22,
       Math.min(vmin * 0.70, orbBottom - orbTop, vw * 0.56));
     return {
       vw: vw, vh: vh, vmin: vmin, pillTop: pillTop, pillBottom: pillBottom,
-      orbCy: (orbTop + orbBottom) / 2, orbSize: orbSize
+      orbCy: (orbTop + orbBottom) / 2, orbSize: orbSize, arrowStrip: arrowStrip
     };
   }
 
@@ -2503,15 +2573,62 @@
     // This lives here (not in applyVoiceLayout) because renderAppRing() also calls
     // layoutHome() on home — two places sizing the orb would fight each other.
     const shrink = (typeof voicePanelOpen !== 'undefined') && voicePanelOpen;
+    // Expanded (swipe up): the orb parks small in the top-right corner instead, and the
+    // window takes the space it left. This is the ONE place the home orb is positioned,
+    // so the three states (normal / voice / expanded) can never fight each other.
+    const expanded = (typeof hwOpen !== 'undefined') && hwOpen;
+    const pill = document.getElementById('spotify-pill');
+    const winEl = document.getElementById('hw-window');
+    const arrowEl = document.getElementById('hw-arrow');
+    const wrap = document.getElementById('orbwrap');
+
+    if (expanded) {
+      // ---- orb parked top-right, small ----
+      const size = Math.min(g.vmin * 0.22, g.vw * 0.2);
+      const rightMargin = Math.max(26, g.vmin * 0.03);
+      const topPx = Math.max(g.vh * 0.07, g.vmin * 0.07);
+      const cx = g.vw - rightMargin - size / 2;     // orb centre, measured from the right
+      // the pill and clock stay put; only the orb and its glow move
+      if (orbApi) { orbApi.setSize(size); orbApi.setTop(topPx + size / 2); }
+      if (wrap) {
+        wrap.style.width = Math.round(size) + 'px';
+        wrap.style.height = Math.round(size) + 'px';
+        wrap.style.left = Math.round(cx) + 'px';
+        wrap.style.top = Math.round(topPx + size / 2) + 'px';
+      }
+      const glow = document.getElementById('orb-glow');
+      if (glow) {
+        glow.style.width = Math.round(size * 1.38) + 'px';
+        glow.style.height = Math.round(size * 1.38) + 'px';
+      }
+      if (arrowEl) {
+        // arrow tucks directly under the parked orb, same x
+        arrowEl.style.left = Math.round(cx) + 'px';
+        arrowEl.style.top = Math.round(topPx + size + 40) + 'px';
+      }
+      if (winEl) {
+        // the window occupies the band the orb used to sit in, clear of the corner orb
+        // AND its arrow, so nothing overlaps
+        const winTop = Math.max(g.pillBottom + 14, topPx + size + 40 + 32 + 14);
+        const winH = Math.max(240, (g.vh - 24) - winTop);
+        const winW = Math.min(g.vw * 0.86, g.vw - rightMargin - size - 60);
+        winEl.style.left = Math.round(Math.max(winW / 2 + 24, (g.vw - size - rightMargin) / 2)) + 'px';
+        winEl.style.top = Math.round(winTop + winH / 2) + 'px';
+        winEl.style.width = Math.round(winW) + 'px';
+        winEl.style.height = Math.round(winH) + 'px';
+      }
+      if (pill) pill.style.top = Math.round(g.pillTop) + 'px';
+      return;
+    }
+
+    // ---- collapsed: the big centred orb ----
     const size = shrink ? Math.min(g.orbSize, g.vmin * 0.22) : g.orbSize;
     const cy = shrink ? g.vh * 0.5 : g.orbCy;
-    const pill = document.getElementById('spotify-pill');
     if (pill) pill.style.top = Math.round(g.pillTop) + 'px';
     if (orbApi) {
       orbApi.setSize(size);
       orbApi.setTop(cy);
     }
-    const wrap = document.getElementById('orbwrap');
     if (wrap) {
       wrap.style.width = Math.round(size) + 'px';
       wrap.style.height = Math.round(size) + 'px';
@@ -2523,8 +2640,87 @@
       glow.style.width = Math.round(size * 1.38) + 'px';
       glow.style.height = Math.round(size * 1.38) + 'px';
     }
+    if (arrowEl) {
+      // sits in the strip reserved under the orb, centred
+      arrowEl.style.left = (shrink ? '22vw' : '50%');
+      arrowEl.style.top = Math.round(cy + size / 2 + g.arrowStrip / 2) + 'px';
+    }
   }
   window.layoutHome = layoutHome;
+
+  // ================= home: expand / collapse =================
+  // Swipe up (or the up arrow) parks the orb in the top-right corner and opens a window
+  // in the space it left; swipe down / the down arrow / Escape puts it back.
+  //
+  // The window is intentionally empty for now — it is the container the next screens get
+  // built into. layoutHome() above does the geometry; this only owns the flag.
+  var hwOpen = false;
+
+  function hwSet(open) {
+    if (hwOpen === open) return;
+    hwOpen = open;
+    document.body.classList.toggle('hw-open', open);
+    layoutHome();
+  }
+  const hwToggle = () => hwSet(!hwOpen);
+
+  const hwArrowEl = document.getElementById('hw-arrow');
+  if (hwArrowEl) {
+    hwArrowEl.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      hwToggle();
+    });
+  }
+  // the empty window does not close on click (it will hold controls later)
+  const hwWinEl = document.getElementById('hw-window');
+  if (hwWinEl) hwWinEl.addEventListener('click', function (ev) { ev.stopPropagation(); });
+
+  // ---- swipe up / down on the home screen ----
+  // Only fires when the gesture is clearly vertical and long enough, so it cannot be
+  // confused with a tap on the orb or a drag inside a slider.
+  (function wireHomeSwipe() {
+    let sy = 0, sx = 0, tracking = false;
+    const THRESH = 70;          // px of travel before it counts as a swipe
+    const SLOP = 60;            // horizontal slop allowed before it is treated as a drag
+    window.addEventListener('touchstart', function (e) {
+      if (!document.body.classList.contains('home')) return;
+      if (!e.touches || e.touches.length !== 1) return;
+      const t = e.target;
+      // never hijack a control
+      if (t && t.closest && t.closest('input, textarea, button, #sp-player, #sc-window, #vc-panel')) return;
+      sy = e.touches[0].clientY; sx = e.touches[0].clientX; tracking = true;
+    }, { passive: true });
+    window.addEventListener('touchend', function (e) {
+      if (!tracking) return;
+      tracking = false;
+      if (!document.body.classList.contains('home')) return;
+      const ct = (e.changedTouches && e.changedTouches[0]);
+      if (!ct) return;
+      const dy = ct.clientY - sy, dx = ct.clientX - sx;
+      if (Math.abs(dx) > SLOP || Math.abs(dy) < THRESH) return;
+      if (dy < 0) hwSet(true);          // swipe up -> expand
+      else hwSet(false);                // swipe down -> collapse
+    }, { passive: true });
+    // Trackpads and mice: wheel up/down over the home background does the same thing,
+    // debounced so one flick is one toggle.
+    let wheelLock = 0;
+    window.addEventListener('wheel', function (e) {
+      if (!document.body.classList.contains('home')) return;
+      if (vcOpenLike()) return;
+      const t = e.target;
+      if (t && t.closest && t.closest('input, textarea, #sp-player, #sc-window, #vc-panel')) return;
+      if (Math.abs(e.deltaY) < 24 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      const now = Date.now();
+      if (now < wheelLock) return;
+      wheelLock = now + 700;
+      hwSet(e.deltaY < 0);
+    }, { passive: true });
+    function vcOpenLike() {
+      return (typeof voicePanelOpen !== 'undefined' && voicePanelOpen) ||
+             (typeof spPlayerOpen !== 'undefined' && spPlayerOpen) ||
+             (typeof scOpen !== 'undefined' && scOpen);
+    }
+  })();
   // ================= voice chat (wake word + Space) =================
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   const recog = SpeechRec ? new SpeechRec() : null;
