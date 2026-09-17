@@ -850,6 +850,110 @@
     border-radius: 14px;
   }
 
+  /* ---- item detail window ----
+     Opened by clicking a card on the To Do board. Same shape as the Spotify player
+     window: a blurred backdrop plus a centred panel, so the mirror reads consistently
+     however you opened something.
+
+     The instructions body below is a PLACEHOLDER: the shell (open, close, morph, sizing,
+     scrolling) works and the steps list is intentionally empty so it can be populated
+     per item next. */
+  #td-backdrop {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(2,10,5,0);
+    backdrop-filter: blur(0px) saturate(1);
+    -webkit-backdrop-filter: blur(0px) saturate(1);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition:
+      opacity .38s var(--ease),
+      background-color .38s var(--ease),
+      backdrop-filter .38s var(--ease),
+      -webkit-backdrop-filter .38s var(--ease),
+      visibility 0s linear .38s;
+  }
+  #td-backdrop.open {
+    background: rgba(2,10,5,.55);
+    backdrop-filter: blur(14px) saturate(.9);
+    -webkit-backdrop-filter: blur(14px) saturate(.9);
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition:
+      opacity .38s var(--ease),
+      background-color .38s var(--ease),
+      backdrop-filter .38s var(--ease),
+      -webkit-backdrop-filter .38s var(--ease),
+      visibility 0s linear 0s;
+  }
+  #td-window {
+    position: fixed; left: 50%; top: 50%; z-index: 61;
+    transform: translate(calc(-50% + var(--td-dx, 0px)), calc(-50% + var(--td-dy, 0px))) scale(.92);
+    width: min(94vw, 1500px); height: min(88vh, 900px);
+    display: flex; flex-direction: column;
+    padding: 26px 30px 22px;
+    background: rgba(8,20,13,.93);
+    border: 1px solid rgba(110,231,183,.28);
+    border-radius: 28px;
+    box-shadow: 0 30px 90px rgba(0,0,0,.7);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transform-origin: 50% 50%;
+    transition:
+      opacity .30s var(--ease),
+      transform .46s cubic-bezier(.22,1,.36,1),
+      visibility 0s linear .46s;
+  }
+  #td-window.open {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition:
+      opacity .30s var(--ease),
+      transform .46s cubic-bezier(.22,1,.36,1),
+      visibility 0s linear 0s;
+  }
+  #td-head {
+    flex: 0 0 auto; padding-right: 70px;   /* clear of the close button */
+    border-bottom: 1px solid var(--card-border); padding-bottom: 16px; margin-bottom: 18px;
+  }
+  #td-kind {
+    font-size: .85rem; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--accent); font-weight: 700;
+  }
+  #td-title {
+    font-size: 2rem; font-weight: 700; color: var(--text);
+    line-height: 1.2; margin-top: 6px; word-break: break-word;
+  }
+  #td-meta { font-size: 1rem; color: var(--muted); margin-top: 6px; }
+  #td-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 6px; }
+  #td-steps { display: flex; flex-direction: column; gap: 14px; }
+  .td-step {
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 18px 20px; border-radius: 16px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border);
+  }
+  .td-step.done { background: rgba(110,231,183,.1); border-color: rgba(110,231,183,.45); }
+  .td-step-n {
+    flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(110,231,183,.16); border: 1px solid rgba(110,231,183,.42);
+    color: var(--accent); font-size: 1.2rem; font-weight: 700;
+  }
+  .td-step-m {
+    flex: 1 1 auto; font-size: 1.2rem; line-height: 1.4; color: var(--text);
+    padding-top: 8px; cursor: pointer;
+  }
+  .td-step.done .td-step-m { color: var(--accent); text-decoration: line-through; }
+  #td-empty {
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; color: var(--muted); font-size: 1.2rem; letter-spacing: 1px;
+    text-align: center; line-height: 1.6;
+  }
+  #td-close {
+    position: absolute; right: 20px; top: 18px;
+    width: 48px; height: 48px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.07); border: 1px solid var(--card-border);
+    color: var(--muted); font-size: 1.4rem; line-height: 1; cursor: pointer;
+  }
+  #td-close:hover { background: rgba(255,83,112,.2); color: #ff9aae; }
+
   .pg-btn {
     flex: 0 0 auto; height: 44px; padding: 0 16px; border-radius: 22px;
     background: rgba(110,231,183,.16); border: 1px solid rgba(110,231,183,.42);
@@ -1199,6 +1303,22 @@
         <button id="vc-send" title="Send">Send</button>
       </div>
       <div id="vc-hint">Space to talk. Escape or the orb to go back.</div>
+    </div>
+
+    <!-- Item detail window. Clicking a card on the To Do board opens this with that
+         item's instructions. It reuses the Spotify player's backdrop + panel shape so
+         every window on the mirror behaves the same way. -->
+    <div id="td-backdrop"></div>
+    <div id="td-window" role="dialog" aria-label="Item instructions" aria-hidden="true">
+      <button id="td-close" title="Close">&#10005;</button>
+      <div id="td-head">
+        <div id="td-kind"></div>
+        <div id="td-title"></div>
+        <div id="td-meta"></div>
+      </div>
+      <div id="td-body">
+        <div id="td-steps"></div>
+      </div>
     </div>
 
     <div id="spotify-pill" class="anim">
@@ -2637,6 +2757,10 @@
   function orbUp() {
     const cur = currentLayout();
     if (voicePanelOpen) { closeVoicePanel(); return; }
+    // The item window is the innermost layer of all - it sits above the apps grid, so it
+    // has to close first. Without this the orb went back a level underneath while the
+    // item window stayed on top.
+    if (typeof tdOpen !== 'undefined' && tdOpen) { tdCloseWindow(); return; }
     // hwOpen is `var` (hoisted), so typeof is a safe test. hwCurrentApp is declared with
     // `let` LATER in this script: `typeof x` on a `let` in its temporal dead zone THROWS
     // rather than returning 'undefined', so it must not be touched from here. The grid
@@ -2661,6 +2785,7 @@
     if (e.key === 'Escape' && !e.repeat) {
       const t = e.target;
       const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA');
+      if (typeof tdOpen !== 'undefined' && tdOpen) { tdCloseWindow(); return; }
       if (scOpen) { scCloseWindow(); return; }
       if (spPlayerOpen) { spClosePlayer(); return; }
       // collapsed the expanded home window before backing out of the page
@@ -2990,6 +3115,147 @@
     }
   }
   window.layoutHome = layoutHome;
+
+  // ================= item detail window =================
+  // Click a card on the To Do board and its instructions open here, in a window shaped
+  // like the Spotify player's. The panel itself is generic: it takes a title, some meta
+  // and a list of steps, so anything on the mirror can use it, not just To Do cards.
+  //
+  // The STEPS ARE THE PART STILL TO COME. This builds the shell - open, close, backdrop
+  // blur, the pill-to-window morph, scrolling for a long list - and renders whatever
+  // pgTodoOpenWindow() is handed. Pass it no steps and it says so plainly rather than
+  // showing an empty box.
+  //
+  // Exposed on window because the app pages run in a different scope and need to call it.
+  var tdOpen = false;
+
+  function tdEl(id) { return document.getElementById(id); }
+
+  function tdIsOpen() { return tdOpen; }
+
+  // Aim the closed state at the clicked card, in the same style as the Spotify window:
+  // the window appears to grow out of the thing you tapped rather than fading in place.
+  function tdAimMorph(fromEl) {
+    var win = tdEl('td-window');
+    if (!win) return;
+    if (!fromEl || !fromEl.getBoundingClientRect) {
+      win.style.setProperty('--td-dx', '0px');
+      win.style.setProperty('--td-dy', '0px');
+      return;
+    }
+    // LAYOUT metrics, not getBoundingClientRect: the card may be inside a scaled or
+    // mid-animation container, and rect values come back pre-multiplied by that transform.
+    var t = fromEl.offsetTop + (fromEl.offsetParent ? fromEl.offsetParent.offsetTop : 0);
+    var l = fromEl.offsetLeft + (fromEl.offsetParent ? fromEl.offsetParent.offsetLeft : 0);
+    var w = fromEl.offsetWidth || 0;
+    var h = fromEl.offsetHeight || 0;
+    if (!w || !h) {
+      win.style.setProperty('--td-dx', '0px');
+      win.style.setProperty('--td-dy', '0px');
+      return;
+    }
+    var vw = window.innerWidth, vh = window.innerHeight;
+    // the card's centre, relative to the window's own centre at translate(-50%,-50%)
+    var dx = (l + w / 2) - vw / 2;
+    var dy = (t + h / 2) - vh / 2;
+    win.style.setProperty('--td-dx', Math.round(dx) + 'px');
+    win.style.setProperty('--td-dy', Math.round(dy) + 'px');
+  }
+
+  // item: { title, kind, meta, steps: [string|{text,done}] }. All optional except title.
+  function tdOpenWindow(item, fromEl) {
+    item = item || {};
+    var win = tdEl('td-window');
+    var bd = tdEl('td-backdrop');
+    if (!win || !bd) return;
+
+    // ---- fill the panel ----
+    var kindEl = tdEl('td-kind');
+    var titleEl = tdEl('td-title');
+    var metaEl = tdEl('td-meta');
+    var stepsEl = tdEl('td-steps');
+    var bodyEl = tdEl('td-body');
+
+    if (kindEl) kindEl.textContent = item.kind || 'Item';
+    if (titleEl) titleEl.textContent = item.title || 'Untitled';
+    if (metaEl) metaEl.textContent = item.meta || '';
+
+    if (stepsEl) {
+      stepsEl.innerHTML = '';
+      bodyEl.classList.remove('td-plain');
+
+      var steps = item.steps || [];
+      if (!steps.length) {
+        // no instructions authored for this item yet - say so, do not show a blank panel
+        var empty = hwEl('div', 'pg-empty', 'No instructions for this one yet.');
+        stepsEl.appendChild(empty);
+      } else {
+        for (var i = 0; i < steps.length; i++) {
+          var s = steps[i];
+          var text = (typeof s === 'string') ? s : (s && s.text) || '';
+          var done = !!(s && typeof s === 'object' && s.done);
+
+          var row = hwEl('div', 'td-step' + (done ? ' done' : ''));
+          row.appendChild(hwEl('div', 'td-step-n', String(i + 1)));
+          var main = hwEl('div', 'td-step-m', hwClean(text));
+          row.appendChild(main);
+
+          // ticking a step is local to the window: it is a checklist while you work
+          // through the job, not a change to the task itself
+          (function (el) {
+            el.addEventListener('click', function () {
+              el.classList.toggle('done');
+            });
+          })(row);
+
+          stepsEl.appendChild(row);
+        }
+      }
+    }
+
+    // ---- open, aimed at the card that was tapped ----
+    if (tdOpen) return;
+    tdOpen = true;
+
+    // aim BEFORE the open class lands, then force a reflow so the browser commits that as
+    // the transition's start value (otherwise the class change and the start value are
+    // resolved in one pass and the morph is skipped)
+    win.classList.remove('open');
+    tdAimMorph(fromEl);
+    void win.offsetWidth;
+
+    document.body.classList.add('td-open');
+    win.classList.add('open');
+    win.setAttribute('aria-hidden', 'false');
+    bd.classList.add('open');
+
+    if (bodyEl) bodyEl.scrollTop = 0;
+  }
+
+  function tdCloseWindow() {
+    if (!tdOpen) return;
+    tdOpen = false;
+    var win = tdEl('td-window');
+    var bd = tdEl('td-backdrop');
+    if (win) {
+      tdAimMorph(null);
+      win.classList.remove('open');
+      win.setAttribute('aria-hidden', 'true');
+    }
+    if (bd) bd.classList.remove('open');
+    document.body.classList.remove('td-open');
+  }
+
+  if (tdEl('td-close')) tdEl('td-close').addEventListener('click', tdCloseWindow);
+  // clicking the dimmed area closes it; clicking inside the panel must not
+  if (tdEl('td-backdrop')) tdEl('td-backdrop').addEventListener('click', tdCloseWindow);
+  if (tdEl('td-window')) {
+    tdEl('td-window').addEventListener('click', function (e) { e.stopPropagation(); });
+  }
+
+  window.pgTodoOpenWindow = tdOpenWindow;
+  window.pgTodoCloseWindow = tdCloseWindow;
+  window.pgTodoIsOpen = tdIsOpen;
 
   // ================= home: expand / collapse =================
   // Swipe up, drag up or press ArrowUp: the orb parks in the top-right corner
@@ -3371,10 +3637,19 @@
             pgkClearHover();
           });
 
-          // click ticks the task off - a drag must not be mistaken for a click
+          // click opens the item's instructions; a drag must not be mistaken for a click.
+          // (Ticking a task off now belongs in the detail window, so a tap can no longer
+          // complete something by accident.)
           card.addEventListener('click', function () {
             if (pgkSuppressClick || pgkDragId !== null) { return; }
-            pgkPost('/toggle', { id: task.id }).then(pgkLoad).catch(function () { pgkLoad(); });
+            if (typeof window.pgTodoOpenWindow === 'function') {
+              window.pgTodoOpenWindow({
+                kind: 'To Do \u00b7 P' + pgkPrio(task.title),
+                title: hwClean(task.title),
+                meta: (task.list ? task.list : '') + (task.due ? ' \u00b7 due ' + String(task.due).slice(0, 10) : ''),
+                steps: []            // to be authored per item
+              }, card);
+            }
           });
 
           body.appendChild(card);
