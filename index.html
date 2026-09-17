@@ -920,8 +920,10 @@
     padding: 10px; display: flex; flex-direction: column; gap: 10px;
   }
   /* ---- our own scroll, one for the whole board ---- */
+  /* top/height are set by JS to match the columns exactly: anchoring to the host box made
+     the bar overhang the columns (it followed the whole area, not the board). */
   .pg-rail {
-    position: absolute; right: 0; top: 0; bottom: 0; width: 18px;
+    position: absolute; right: 0; top: 0; height: 0; width: 18px;
     border-radius: 9px; background: rgba(255,255,255,.07);
     border: 1px solid var(--card-border); touch-action: none;
   }
@@ -3202,6 +3204,16 @@
         if (thumbH > track) thumbH = track;
       }
       pgkThumb.style.height = thumbH + 'px';
+
+      // Align the rail with the COLUMNS, not with the area around them. Both live in the
+      // same positioning context (#pg-todo is relative), so a plain offset does it.
+      var colEl = pgkBoard.querySelector('.pg-col');
+      if (colEl && pgkRail.offsetParent) {
+        var hostBox = pgkRail.offsetParent.getBoundingClientRect();
+        var colBox = colEl.getBoundingClientRect();
+        pgkRail.style.top = Math.round(colBox.top - hostBox.top) + 'px';
+        pgkRail.style.height = Math.round(colBox.height) + 'px';
+      }
 
       // nothing to scroll: hide the rail entirely rather than show a full-length bar
       if (pgkMaxScroll <= 0) {
