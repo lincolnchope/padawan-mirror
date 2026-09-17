@@ -2577,13 +2577,33 @@
     home: 'home',
   };
 
-  // The orb does one of three things, in this order of priority:
-  //   1. panel is up  -> close it (and go back to full-size on the hub)
-  //   2. on an app    -> up to its parent hub
-  //   3. somewhere else -> home
+  // The orb does one of four things, in this order of priority:
+  //   1. panel is up   -> close it (and go back to full-size on the hub)
+  //   2. an app page   -> back to the apps grid  (stays in the window)
+  //   3. apps grid     -> close the window, back to the plain home screen
+  //   4. somewhere else -> home
+  //
+  // Why the window checks live HERE and not in showLayout: the whole mirror is now one
+  // layout ('home'), so showLayout('home') is a no-op when we are already on it - which
+  // is exactly the case when the expanded window is open. Without these two checks the
+  // orb appeared dead while the window was up.
   function orbUp() {
     const cur = currentLayout();
     if (voicePanelOpen) { closeVoicePanel(); return; }
+    // hwOpen is `var` (hoisted), so typeof is a safe test. hwCurrentApp is declared with
+    // `let` LATER in this script: `typeof x` on a `let` in its temporal dead zone THROWS
+    // rather than returning 'undefined', so it must not be touched from here. The grid
+    // view is detected from the DOM instead - #hw-page only carries .on when an app page
+    // is mounted, which is the thing we actually want to know.
+    const winOpen = (typeof hwOpen !== 'undefined') && hwOpen;
+    if (winOpen) {
+      const pageEl = el('hw-page');
+      const onAppPage = !!(pageEl && pageEl.classList.contains('on'));
+      if (onAppPage) { hwShowApps(); return; }   // page -> apps grid
+      hwSet(false);                             // apps grid -> plain home
+      return;
+    }
+    if (cur === 'home') return;        // already home, nothing to go back to
     showLayout(PARENT[cur] || 'home');
   }
   document.getElementById('orb').addEventListener('click', orbUp);
