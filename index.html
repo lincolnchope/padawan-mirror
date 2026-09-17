@@ -640,7 +640,9 @@
     opacity: 0; visibility: hidden; pointer-events: none;
     transition: opacity .34s var(--ease), transform .44s cubic-bezier(.22,1,.36,1),
                 visibility 0s linear .44s;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; flex-direction: column;
+    padding: 26px 28px 22px;
+    overflow: hidden;
   }
   body.home.hw-open #hw-window {
     opacity: 1; visibility: visible; pointer-events: auto;
@@ -648,7 +650,58 @@
     transition: opacity .34s var(--ease), transform .44s cubic-bezier(.22,1,.36,1),
                 visibility 0s linear 0s;
   }
-  #hw-window .empty { color: var(--muted); font-size: 1.3rem; letter-spacing: 1px; }
+
+  /* ---- apps grid (the window's default view) ---- */
+  #hw-apps { flex: 1 1 auto; overflow-y: auto; min-height: 0; padding-right: 8px; }
+  .hw-group { margin-bottom: 18px; }
+  .hw-group:last-child { margin-bottom: 0; }
+  .hw-glabel {
+    font-size: .82rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 10px;
+  }
+  .hw-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 12px;
+  }
+  .hw-app {
+    display: flex; flex-direction: column; justify-content: center; gap: 5px;
+    min-height: 84px; padding: 14px 16px; text-align: left;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border);
+    border-radius: 14px; cursor: pointer;
+    transition: background .16s var(--ease), border-color .16s var(--ease),
+                transform .16s var(--ease);
+  }
+  .hw-app:hover, .hw-app:focus-visible {
+    background: rgba(110,231,183,.16); border-color: rgba(110,231,183,.6);
+    transform: translateY(-2px); outline: none;
+  }
+  .hw-app-name { font-size: 1.2rem; font-weight: 700; color: var(--accent);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hw-app-note { font-size: .88rem; color: var(--muted); line-height: 1.25;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+  /* ---- a single app's page (blank for now) ---- */
+  #hw-page { flex: 1 1 auto; display: none; flex-direction: column; min-height: 0; }
+  #hw-page.on { display: flex; }
+  #hw-page-bar {
+    display: flex; align-items: center; gap: 14px; flex: 0 0 auto;
+    padding-bottom: 14px; margin-bottom: 14px;
+    border-bottom: 1px solid var(--card-border);
+  }
+  #hw-back {
+    display: flex; align-items: center; gap: 8px; flex: 0 0 auto;
+    height: 46px; padding: 0 18px; border-radius: 23px;
+    background: rgba(255,255,255,.06); border: 1px solid var(--card-border);
+    color: var(--accent); font-size: .95rem; font-weight: 700; cursor: pointer;
+  }
+  #hw-back:hover { background: rgba(110,231,183,.24); }
+  #hw-page-title { font-size: 1.6rem; font-weight: 700; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #hw-page-body {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 1.2rem; letter-spacing: 1px;
+  }
 
   /* on a hub that is not home the window has nothing to show */
   body:not(.home) #hw-window { display: none; }
@@ -836,9 +889,17 @@
     </div>
 
     <!-- Swipe up / drag up / wheel up / ArrowUp: the orb parks top-right and this window
-         opens in the space it left. Empty for now. -->
+         opens in the space it left. It shows the apps grid; picking one opens a blank
+         page for it, ready to be built. -->
     <div id="hw-window" class="anim">
-      <div class="empty">Window</div>
+      <div id="hw-apps"></div>
+      <div id="hw-page">
+        <div id="hw-page-bar">
+          <button id="hw-back">&#8249; Apps</button>
+          <div id="hw-page-title"></div>
+        </div>
+        <div id="hw-page-body"></div>
+      </div>
     </div>
 
     <div id="vc-panel" class="anim">
@@ -2640,9 +2701,101 @@
   const hwWinEl = document.getElementById('hw-window');
   if (hwWinEl) hwWinEl.addEventListener('click', function (ev) { ev.stopPropagation(); });
 
+  // ================= window: apps grid =================
+  // The window's default view. The app list is carried over from the previous mirror
+  // (and the v1 PAGE_NOTES one-liners), grouped the way that mirror grouped its rings:
+  // Life, Work, Tools. Every page is intentionally BLANK for now — picking one opens an
+  // empty page with its title and a way back, so each can be filled in next.
+  const HW_APPS = [
+    { group: 'Life', apps: [
+      { id: 'schedule',  name: 'Schedule',  note: 'Today and this week from your Google Calendar' },
+      { id: 'kanban',    name: 'To Do',     note: 'Google Tasks in priority columns' },
+      { id: 'meds',      name: 'Medications', note: 'Medication list with editable counts' },
+      { id: 'money',     name: 'Money',     note: 'Net worth, goals, subscriptions and the ledger' },
+      { id: 'shopping',  name: 'Shopping',  note: 'Shared shopping list' },
+      { id: 'habits',    name: 'Habits',    note: 'Daily habits and streaks' },
+      { id: 'brain',     name: 'Brain',     note: 'Quick capture - thoughts to file later' },
+    ]},
+    { group: 'Work', apps: [
+      { id: 'school',    name: 'School',    note: 'SACs and exams with dates' },
+      { id: 'referee',   name: 'Referee',   note: 'Coaching, reffing, supervising and the rules model' },
+    ]},
+    { group: 'Tools', apps: [
+      { id: 'weather',   name: 'Weather',   note: 'Seven-day forecast for Sherbrooke' },
+      { id: 'news',      name: 'News',      note: 'Headlines, refreshed every ten minutes' },
+      { id: 'music',     name: 'Music',     note: 'Spotify transport controls' },
+      { id: 'timer',     name: 'Timer',     note: 'Countdown and stopwatch with presets' },
+      { id: 'countdown', name: 'Countdown', note: 'Days until the next SAC, exam or appointment' },
+      { id: 'whiteboard', name: 'Whiteboard', note: 'Draw on the mirror and save a PNG' },
+    ]},
+  ];
+
+  function hwRenderApps() {
+    const host = el('hw-apps');
+    if (!host) return;
+    host.innerHTML = '';
+    HW_APPS.forEach(function (g) {
+      const wrap = document.createElement('div');
+      wrap.className = 'hw-group';
+      const label = document.createElement('div');
+      label.className = 'hw-glabel';
+      label.textContent = g.group;
+      wrap.appendChild(label);
+
+      const grid = document.createElement('div');
+      grid.className = 'hw-grid';
+      g.apps.forEach(function (a) {
+        const btn = document.createElement('button');
+        btn.className = 'hw-app';
+        btn.type = 'button';
+        const nm = document.createElement('div');
+        nm.className = 'hw-app-name';
+        nm.textContent = a.name;
+        const nt = document.createElement('div');
+        nt.className = 'hw-app-note';
+        nt.textContent = a.note;
+        btn.appendChild(nm);
+        btn.appendChild(nt);
+        btn.addEventListener('click', function () { hwOpenApp(a); });
+        grid.appendChild(btn);
+      });
+      wrap.appendChild(grid);
+      host.appendChild(wrap);
+    });
+  }
+
+  // Blank page for now: title + a way back. Each app gets its content built here next.
+  function hwOpenApp(a) {
+    const page = el('hw-page'), apps = el('hw-apps');
+    if (!page || !apps) return;
+    if (el('hw-page-title')) el('hw-page-title').textContent = a.name;
+    const body = el('hw-page-body');
+    if (body) body.textContent = a.note;
+    apps.style.display = 'none';
+    page.classList.add('on');
+  }
+
+  function hwShowApps() {
+    const page = el('hw-page'), apps = el('hw-apps');
+    if (page) page.classList.remove('on');
+    if (apps) apps.style.display = '';
+  }
+
+  if (el('hw-back')) el('hw-back').addEventListener('click', hwShowApps);
+  hwRenderApps();
+
   // ---- swipe up / down on the home screen ----
   // Only fires when the gesture is clearly vertical and long enough, so it cannot be
   // confused with a tap on the orb or a drag inside a slider.
+  //
+  // Inside the expanded window the gesture is treated as pull-to-dismiss: an upward
+  // swipe scrolls the app list normally, and only a DOWNWARD one with the list already
+  // at the top collapses the window. Without that, scrolling the apps would close it.
+  const hwScrollerTop = () => {
+    const s = el('hw-apps');
+    if (!s) return true;
+    return s.scrollTop <= 0;
+  };
   (function wireHomeSwipe() {
     let sy = 0, sx = 0, tracking = false;
     const THRESH = 70;          // px of travel before it counts as a swipe
@@ -2663,6 +2816,12 @@
       if (!ct) return;
       const dy = ct.clientY - sy, dx = ct.clientX - sx;
       if (Math.abs(dx) > SLOP || Math.abs(dy) < THRESH) return;
+      const inWindow = e.target && e.target.closest && e.target.closest('#hw-window');
+      if (inWindow) {
+        // downward pull from the top dismisses; anything else is a scroll
+        if (dy > 0 && hwScrollerTop()) hwSet(false);
+        return;
+      }
       if (dy < 0) hwSet(true);          // swipe up -> expand
       else hwSet(false);                // swipe down -> collapse
     }, { passive: true });
@@ -2675,7 +2834,17 @@
       const t = e.target;
       if (t && t.closest && t.closest('input, textarea, #sp-player, #sc-window, #vc-panel')) return;
       if (Math.abs(e.deltaY) < 24 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      const inWindow = t && t.closest && t.closest('#hw-window');
       const now = Date.now();
+      if (inWindow) {
+        // let the window scroll; only a downward flick at the top dismisses it
+        if (e.deltaY > 0 && hwScrollerTop()) {
+          if (now < wheelLock) return;
+          wheelLock = now + 700;
+          hwSet(false);
+        }
+        return;
+      }
       if (now < wheelLock) return;
       wheelLock = now + 700;
       hwSet(e.deltaY < 0);
