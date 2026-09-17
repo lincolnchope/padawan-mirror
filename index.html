@@ -953,6 +953,26 @@
     color: var(--muted); font-size: 1.4rem; line-height: 1; cursor: pointer;
   }
   #td-close:hover { background: rgba(255,83,112,.2); color: #ff9aae; }
+  /* remove button, bottom-left of the panel. Deliberately NOT next to Close: this
+     deletes the task from Google Tasks for good, so it should not be the button your
+     thumb finds by accident. */
+  #td-foot {
+    flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; padding-top: 16px; margin-top: 16px;
+    border-top: 1px solid var(--card-border);
+  }
+  #td-remove {
+    min-height: 52px; padding: 0 24px; border-radius: 26px;
+    background: rgba(255,83,112,.14); border: 1px solid rgba(255,83,112,.42);
+    color: #ff9aae; font-family: inherit; font-size: 1.05rem; font-weight: 700;
+    cursor: pointer;
+  }
+  #td-remove:hover { background: rgba(255,83,112,.28); }
+  /* armed = waiting for the confirming second tap */
+  #td-remove.armed {
+    background: rgba(255,83,112,.4); border-color: #ff5370; color: #fff;
+  }
+  #td-remove-note { font-size: .92rem; color: var(--muted); text-align: right; }
 
   .pg-btn {
     flex: 0 0 auto; height: 44px; padding: 0 16px; border-radius: 22px;
@@ -1318,6 +1338,10 @@
       </div>
       <div id="td-body">
         <div id="td-steps"></div>
+      </div>
+      <div id="td-foot">
+        <button id="td-remove" title="Delete this task">Remove</button>
+        <div id="td-remove-note"></div>
       </div>
     </div>
 
@@ -3116,6 +3140,681 @@
   }
   window.layoutHome = layoutHome;
 
+  // Instructions per To Do item, keyed by Google Tasks id.
+  // Built from the task list; add an entry here to give a task instructions.
+  var TD_INSTRUCTIONS = {
+    'LUp4WHBoYV9NTXJfaWNzWQ': [
+      'Switch the printer off with the power button and wait for the screen to go dark.',
+      'Unplug the power cable from the wall socket, not just the printer side.',
+      'Wait a full 30 seconds before plugging anything back in.',
+      'Plug the cable back in firmly and switch the printer on.',
+      'Let it finish booting fully, then check if the error is gone.',
+      'If the error returns, write down the code and move to the next step in the ladder.',
+    ],
+    'M1NiOW9NMDl3c210aVZxOQ': [
+      'Install a local vision model such as LLaVA or a similar small multimodal model on your server.',
+      'Test it from the command line on a saved image and check the answers are usable.',
+      'Write an endpoint that takes one frame plus a text question and returns the model answer.',
+      'Add image downscaling so large frames do not blow out response time.',
+      'Send frames from the camera to that endpoint and read the reply back to the glasses.',
+      'Time a full round trip and tune frame size and model size until it feels responsive.',
+    ],
+    'M1hzUHVUaEVIMHQzUlVuVw': [
+      'Check your association or competition rules for the required shirt colour and style.',
+      'Measure your chest and check the size chart before ordering.',
+      'Buy at least two so you always have a clean one on game day.',
+      'Pick a fabric that breathes - you will sweat through games.',
+      'Check the logo or patch requirement and get it added if needed.',
+      'Wash them after each game and hang to dry, not in the dryer.',
+    ],
+    'ME1hTkVnZTNsTzlNclNiYQ': [
+      'Decide which wake word engine to run locally, for example openWakeWord or Picovoice Porcupine.',
+      'Install the engine in the mirror backend virtualenv and confirm it runs on the mirror host.',
+      'Register the phrase "Hey Padawan" as the wake word and tune the sensitivity threshold.',
+      'Wire the detected event to POST to the backend voice endpoint on port 2008.',
+      'Run the listener as a background service so it restarts on boot.',
+      'Test by speaking the phrase near the mirror mic and check the backend log shows a hit.',
+    ],
+    'MEl3WTl2dHY2cWNtVDMzVA': [
+      'Pull your CPU, RAM, GPU, and PSU test results into one table so you can compare working parts side by side.',
+      'Pick the Ryzen 5 that POSTed reliably on the board you intend to keep and that has the highest core count for your workloads.',
+      'Check that motherboard has the PCIe slot and memory support you need, and enough SATA and M.2 for your drives.',
+      'Pair it with your best-tested RTX 3060, since VRAM matters more than raw speed for running local models.',
+      'Confirm the PSU you selected can carry the CPU plus one 3060 with headroom, roughly a 550 to 650 watt unit.',
+      'Assemble the final combo on the bench, boot it, and run your actual AI workload before you commit the parts to the case.',
+    ],
+    'MGtNbXJSUlRTeXFpVWUyXw': [
+      'List the tasks that are too heavy for the Pi: large model inference, training, batch transcription.',
+      'Expose those tasks on the home server as simple HTTP endpoints.',
+      'Have the Pi send the input over the network and wait for the result, with a timeout.',
+      'Add a fallback so the Pi can still answer with its small local model if the server is unreachable.',
+      'Test both paths by unplugging the network and confirming it degrades instead of failing.',
+    ],
+    'MHh5bS12djdJMzlDVU5iaQ': [
+      'Sign in to the domain or email provider billing dashboard.',
+      'Set a spending or usage alert threshold just above your normal monthly cost.',
+      'Set your main inbox as the notification address for the alerts.',
+      'Turn on any renewal reminder so a charge never catches you out.',
+      'Note the renewal date somewhere you check regularly.',
+      'Confirm the alert saved and fire a test notification if the provider allows it.',
+    ],
+    'MmRPSjQ3YXBWN3JuQTcyWQ': [
+      'Decide what the screen is for: music, maps, gauges, or all three, and what you look at while driving.',
+      'Keep the design simple and high contrast, since glancing at it while driving must be quick.',
+      'Sketch the layout on paper first: what sits on the main screen and what lives one tap away.',
+      'Build it as a web page or an app that runs fullscreen, matching the resolution of the head unit.',
+      'Make tap targets large and put the most used control within easy reach from the driver seat.',
+      'Test it in the car in daylight and at night, then adjust brightness and font sizes.',
+    ],
+    'N0NFQzFwMXdjWmQ3cldaYw': [
+      'Decide the exact figure you need, somewhere between $8,000 and $15,000.',
+      'Add $1,500-2,000 on top for rego, transfer fees, insurance and immediate repairs.',
+      'Open a separate high-interest savings account for the car fund.',
+      'Set up an automatic transfer from every pay into that account.',
+      'Work out how many months of saving that takes and set a target date.',
+      'Check the balance weekly so you can see the progress.',
+    ],
+    'NE94UkpBTWJHbjQwSldvZA': [
+      'Get written quotes from two mechanics for each item in the inspection report.',
+      'Split safety items (brakes, tyres, suspension) from cosmetic ones and do safety first.',
+      'Ask the seller to fix major faults or drop the price accordingly before you buy.',
+      'Once you own it, book repairs in order of safety risk, not convenience.',
+      'Record the date, odometer reading and invoice for every repair you have done.',
+    ],
+    'NFZXeFdXSzliZHV2R25NSQ': [
+      'List your requirements first: resolution, frame rate, field of view, size and power draw.',
+      'Compare OV5640 against other small modules and note driver support on your chosen board.',
+      'Check which modules are already supported on Raspberry Pi or ESP32 so software work is smaller.',
+      'Confirm the module has a datasheet with a wiring diagram and a known connector type.',
+      'Buy one module and a spare, then bring it up with a simple capture test before mounting it.',
+      'Only commit to the final design once the capture test and power use both check out.',
+    ],
+    'NTg5WTNSbTdIbnhuSTYzMw': [
+      'Decide whether you want one catch-all address or named aliases for each use.',
+      'Create the named aliases: me, school, bills, projects and ref at your domain.',
+      'If you use a catch-all, point every unlisted address at one destination inbox.',
+      'Confirm each alias can both receive mail and send from your domain.',
+      'Add labels or filters by alias so you can tell which address a message came to.',
+      'Send a test message to each alias and check it lands in the right place.',
+    ],
+    'NjFnUWhvclBBQnRyMmNabA': [
+      'Check the tear or split - if it is along a seam, stitching may fix it.',
+      'Buy a needle and thread or iron-on patch in a matching black.',
+      'Turn the pants inside out and pin the repair flat.',
+      'Sew a tight stitch along the seam or iron the patch on the inside.',
+      'Test by squatting and running - resew if it pulls apart.',
+      'If the fabric is worn through, retire them and note the size to replace.',
+    ],
+    'OE4zeURhWE5lbVQ4Tm5HOQ': [
+      'Decide whether to forward everything into one inbox or manage each account separately.',
+      'If forwarding, set the rule at the provider and keep an original copy if offered.',
+      'If multi-account, add each account to one client such as Thunderbird or your phone mail app.',
+      'Check that sending from each account uses the correct from address.',
+      'Set folders or labels so forwarded and account-specific mail stays sorted.',
+      'Send and receive a test message from every account before relying on it.',
+    ],
+    'OGp1STRMMVR6Y1B1OG9qcA': [
+      'Download the current Ubuntu Server LTS ISO from the official Ubuntu website on another machine.',
+      'Write the ISO to a USB stick of at least 8 GB using balenaEtcher or dd, then verify the write finished without errors.',
+      'Boot the server from the USB, usually via the F12 or F11 boot menu key, and select Install Ubuntu Server.',
+      'Step through the installer, set the hostname and username, and tick Install OpenSSH server so you can log in remotely.',
+      'Leave the machine headless after the install finishes, and find its IP from your router or the installer summary screen.',
+      'SSH in from your laptop with ssh youruser@that-ip and run sudo apt update then sudo apt upgrade to bring it current.',
+    ],
+    'OTJNR2ptRGRZWjFYY1l3MQ': [
+      'Install Tailscale on the AI server and on each device you plan to use remotely.',
+      'Run tailscale up on the server and authenticate in the browser window it opens.',
+      'Turn on MagicDNS so devices can be reached by name instead of IP.',
+      'Note the server Tailscale IP, it will start with 100.',
+      'Disable key expiry on the server so it never drops off while unattended.',
+      'Test from a phone on mobile data - ping the Tailscale IP and open a web UI.',
+    ],
+    'OVFOdHpQSjUwLVlmZmU3MA': [
+      'Build one main dashboard with a tab per room, and a summary tab for the whole house.',
+      'Add lights, plugs, sensors and media as cards, sorted by how often you actually use them.',
+      'Add a few quick actions at the top: all lights off, good night, and a movie scene.',
+      'Expose the same entities to voice so control works from the phone, a speaker or the mirror.',
+      'Add the dashboard to your phone home screen and to the mirror page so it is always one tap away.',
+      'Check every control actually works, then back up the config once it is right.',
+    ],
+    'Q2x1XzFyZU1FNVBRbmZCRg': [
+      'Download the Armbian or Ubuntu image built for the Orange Pi 6 Plus from the official site.',
+      'Write the image to a microSD card with balenaEtcher or dd, then insert it into the board.',
+      'Connect ethernet and power, then find the board on the network with your router or a ping sweep.',
+      'Log in over SSH (default user from the image docs) and change the password immediately.',
+      'Run apt update and upgrade, set the hostname and timezone, then reboot and confirm it returns.',
+    ],
+    'QUN6c0dmQTVZel8tQ2RyYQ': [
+      'Order an ESP32 board and a 6-axis IMU module (MPU6050 or BMI160) plus a small LiPo cell.',
+      'Wire the IMU to the ESP32 over I2C: power, ground, SDA and SCL, then scan the bus to confirm the address.',
+      'Flash a sketch that reads raw accel and gyro at 50 to 100 Hz and streams values over serial.',
+      'Log a few seconds of data while holding the ring still to measure sensor noise.',
+      'Mount the board on a finger or a mock ring and confirm the readings change with hand motion.',
+    ],
+    'Qnp0YlZqbDFLV25aeE83Qg': [
+      'Use your phone connecting to home Wi-Fi, or a person arriving at the house zone, as the trigger.',
+      'Add a condition so it only runs between sensible hours and when the house was previously empty.',
+      'Turn on entry lights, kitchen light and any lamp on the path in.',
+      'Have the speaker welcome you and read out the weather or the first thing on your calendar.',
+      'Turn on the PC or entertainment plug if you want it ready.',
+      'Check the logbook to confirm it fires once per arrival, not every time your phone reconnects.',
+    ],
+    'R1hIc3RQLVg3RDIyMDA0ZA': [
+      'Decide the trigger: a time on school days, or your phone alarm or first motion in the hallway.',
+      'Create a new automation with that trigger, then add a condition so it only runs when someone is home.',
+      'Turn on lights in the kitchen and living areas, dimmed warm rather than full brightness.',
+      'Make the voice assistant or a speaker announce the time and the day’s first task.',
+      'Add a slow fade so lights brighten over a few minutes instead of snapping on.',
+      'Test it by firing the automation manually from the automation menu.',
+    ],
+    'RTdMQldIUi1vc0RTTnZ2QQ': [
+      'Set the motherboard on a non-conductive surface like its cardboard box, not on carpet or a metal bench.',
+      'Fit one CPU with a thin layer of thermal paste and mount the cooler, then clip in a single known RAM stick in slot A2.',
+      'Connect the 24-pin ATX and the 8-pin CPU power from a PSU you have already paperclip-tested.',
+      'Plug a monitor into the onboard video output if the board has one, otherwise fit one GPU, and connect a keyboard.',
+      'Power on and watch for a POST beep, the debug LEDs on the board, or a display signal, then note the result for that combo.',
+      'Move the same CPU to the next motherboard and repeat, so you are changing only one part at a time.',
+      'Log each combo in a table as POSTs, hangs, or no power so you can see which pairs actually work.',
+    ],
+    'RXhnNVJqU2NXVHc0cFpUbg': [
+      'Measure the electronics stack and the frame space it has to fit inside.',
+      'Sketch the enclosure in a free CAD tool with clearance for wires and a lid that snaps shut.',
+      'Add mounting tabs or clips that match how the enclosure attaches to the glasses.',
+      'Leave an opening for the charging port and any heat-generating component.',
+      'Print a draft at low infill, test fit the parts, then adjust and reprint.',
+      'Print the final in a durable filament and check nothing presses on your head or ear.',
+    ],
+    'S0luMVB4YVVRYnJVSXFqMQ': [
+      'Create saved searches on Carsales for IS250, GS300 and Crown with your budget filter.',
+      'Set up the same searches on Facebook Marketplace and Gumtree with alerts turned on.',
+      'Filter out listings with no service history, accident damage or a salvage title.',
+      'Shortlist 8-10 cars and save the links plus seller contact details.',
+      'Message sellers asking for service history, km, rego status and reason for selling.',
+      'Compare every shortlisted car against your market price research before travelling.',
+    ],
+    'S0t2SkstYmd4UGpKYWJMdA': [
+      'Pick the host: run HA on the AI server for more grunt, or a dedicated Pi so the server can reboot freely.',
+      'Install the HA OS image or run HA Container under Docker on the chosen host.',
+      'Give the host a static IP or DHCP reservation so its address never changes.',
+      'Finish onboarding in the browser, then restore or create a backup and download it somewhere safe.',
+      'Install the companion app on your phone and log in to get device tracking and notifications.',
+    ],
+    'SE40RmJxR214UUczOUJBRw': [
+      'Move the toolhead by hand along X and Y and feel for slack or grinding.',
+      'Press each belt with a finger - it should deflect a few mm, not sag loose.',
+      'Find the belt tensioner screws for your model on the Bambu Wiki before touching anything.',
+      'Loosen the lock screw, turn the tensioner a small amount, then retighten.',
+      'Do not overtighten - belts too tight load the motors and can cause damage.',
+      'Run a calibration and a test print, then check for layer shift or ringing.',
+    ],
+    'SEtpYk0zTTdEZEtOQ2dkUQ': [
+      'Write a display driver that draws simple text and icons on the HUD over your chosen bus.',
+      'Build an audio pipeline that captures mic input, mixes streams, and sends it to the bone conduction amp.',
+      'Add a wake word or button to gate when audio is captured so you are not always listening.',
+      'Write a client that sends captured audio and frames to your AI server and displays the reply.',
+      'Keep the HUD drawing loop separate from the network loop so a slow response never freezes the display.',
+      'Log every stage with timestamps so you can find where latency is coming from.',
+    ],
+    'SHA3blVTWEdrUndzclpJcQ': [
+      'Note the current firmware version from the settings menu on the screen.',
+      'Download the firmware file for your exact printer model from Bambu Lab.',
+      'Format a USB drive to FAT32 and copy the firmware file to the root folder.',
+      'With the printer off, insert the USB drive, then power it on.',
+      'Never power the printer off during flashing - it can brick the mainboard.',
+      'After it reboots, check the version number and re-run the calibration.',
+    ],
+    'SWpOOGJvTTgxRVdIMC1mUQ': [
+      'Pick a cheap lightweight glasses frame with removable lenses so you can work on a bare shell.',
+      'Choose a small OLED or micro-LCD display module sized to fit above or beside one eye.',
+      'Order a bone conduction transducer sized for a temple arm, plus a driver amp board.',
+      'Order two small MEMS mics with matching preamp boards for the array.',
+      'Measure each part and note weight and mounting points before buying anything else.',
+      'Lay all parts on the frame and check total weight sits under about 60 grams.',
+    ],
+    'SWxtaVljYUZ6U3NTUzJVZg': [
+      'Search GitHub for OpenGlass, Specter and similar DIY smart glasses repos.',
+      'Read each project readme and note the hardware it targets and what it actually achieves.',
+      'Check the licence on anything you plan to reuse or build on.',
+      'Look at the issues and recent commits to see if the project is still active.',
+      'Pick the closest match to your own parts and clone it to study the software design.',
+      'Write down what you will borrow and what you must change for your own hardware.',
+    ],
+    'SmctSk13ZWU5enU1TG1Ieg': [
+      'Tidy first: put everything back where it belongs before cleaning.',
+      'Dust surfaces, shelves and skirting boards from top to bottom.',
+      'Vacuum or sweep floors, then mop hard floors.',
+      'Clean the bathroom and toilet if they are downstairs.',
+      'Wipe down light switches, door handles and the stair rail.',
+      'Take rubbish and any recycling out to the bins.',
+    ],
+    'SzdqelhteU1pOHU1MWgwWA': [
+      'Add a mic button on the mirror page that starts capture on press and stops on release.',
+      'Use the browser MediaRecorder API to capture audio while the button is held.',
+      'Post the recorded clip to the backend voice endpoint when the button is released.',
+      'Grant the browser mic permission for the mirror origin once and keep it saved.',
+      'Show clear visual feedback for listening, sending and reply states.',
+      'Test on the mirror touchscreen and confirm the backend returns a reply.',
+    ],
+    'TEJhV2hRU1hnRklWYnBTaw': [
+      'Choose the voice layer: HA Assist, Google or Alexa, or a local voice assistant you are already hosting.',
+      'For HA Assist, enable it on a smart speaker or phone and pick the wake word and language.',
+      'Expose only the entities you want voice control over, using an Assist exposure list.',
+      'Add friendly aliases to each exposed entity so "desk light" works instead of the raw entity name.',
+      'Test common commands like turning a lamp on, dimming it, and asking the time.',
+      'Lock down anything risky so voice cannot open doors or disarm the alarm.',
+    ],
+    'TEl5V1BYQ3JXVW9rblZkRA': [
+      'Choose a protocol that matches your hub: Zigbee, Z-Wave, Thread, or Wi-Fi for the cheap ones.',
+      'Make sure you have the matching radio or border router before buying sensors.',
+      'Mount sensors on the frame, not the moving door, with the magnet on the door itself.',
+      'Pair each sensor to HA, then rename it after the room it protects and set its Area.',
+      'Create a low-battery alert automation so you get a warning before one dies.',
+      'Add an automation that notifies you if a door opens while everyone is away.',
+    ],
+    'THFWY0RRN21WUlVWT2xQVg': [
+      'Charge the glasses fully the night before so the test starts from a known state.',
+      'Wear them for a full day, including indoors, outdoors, and in and out of shade.',
+      'Check the display is readable in bright sun and not blinding in a dark room.',
+      'Note where ambient light washes out the HUD and where the brightness is uncomfortable.',
+      'Write down battery percentage at the end and how many hours you actually got.',
+      'List every comfort problem: pressure points, cable pull, weight and heat.',
+      'Adjust brightness or add a shade over the display based on what you recorded.',
+    ],
+    'THpsVE9mRThDY0FoazhOTQ': [
+      'Make sure the domain is on Cloudflare and the records you want protected are proxied.',
+      'Create a Cloudflare Access application covering the admin or webmail paths you want locked down.',
+      'Add an access policy allowing only your own email or identity provider login.',
+      'Test in a private window that an unauthenticated visitor is blocked and you still get in.',
+      'Keep recovery and support addresses reachable in case you lock yourself out.',
+      'Write down the policy and who can reach what so it stays documented.',
+    ],
+    'TmowLVBmS2hyenpKc3VlWg': [
+      'Check your council bin schedule for which bin goes out which week.',
+      'Note the night before collection day - put the bin out that evening.',
+      'Check the bin is not too heavy and the lid closes fully.',
+      'Bring the bin back in the day after collection.',
+    ],
+    'TnhmczgwQk9ZR3BEY3hYOA': [
+      'Expose backend endpoints to start, stop and list running models on the AI server.',
+      'Have each endpoint run the real command and return the model name and current status.',
+      'Map voice intents like "start model", "stop model" and "what is running" onto those endpoints.',
+      'Confirm out loud before stopping a model, and report the result back in the voice reply.',
+      'Log every start and stop with a timestamp so you can trace what changed.',
+      'Test each intent and verify the server processes actually changed state.',
+    ],
+    'TzUxMmpNeF95VFRaWWx5Xw': [
+      'Measure the board, battery and any connectors with calipers before drawing anything.',
+      'Model the case in a CAD tool with cutouts for USB, vents and the power button.',
+      'Leave a gap around heat sources so air can move, and add vent slots if the board runs warm.',
+      'Print a first draft in cheap filament, fit the parts, then adjust tight spots and reprint.',
+      'Add a belt clip or a strap loop and test it holds the weight while you walk.',
+    ],
+    'U0NqOFY1aTlRaHBjYTVpRA': [
+      'Work on one GPU at a time and fit it in the top PCIe x16 slot, which is the one wired for full bandwidth.',
+      'Connect the required PCIe power cables from a PSU you have already tested, using separate cables rather than a daisy chain.',
+      'Plug the monitor into that card, not the motherboard, then power on and wait for the BIOS splash.',
+      'Once in the OS, run a GPU stress test or benchmark for at least fifteen minutes and watch for crashes, artefacts, or black screens.',
+      'Check the card is seen at the right link width and speed, and watch the reported temperature to catch cards with dried-out paste or fans.',
+      'Label each card as good, suspect, or dead and keep the results with the CPU and RAM results for the build decision.',
+    ],
+    'U0x3N3BOVWhrNk1KLTctcA': [
+      'Keep a folder, paper or digital, with every invoice and receipt from day one.',
+      'Record date, odometer, work performed and the workshop for each service.',
+      'Store digital copies in cloud storage so a lost glovebox folder does not matter.',
+      'Log any DIY work with the date, parts used and kilometres travelled.',
+      'Show the full history when you sell; it justifies a higher asking price.',
+    ],
+    'U1UtaGM0TUZOZHkyMldQXw': [
+      'Remove all rubbish and personal items, then vacuum seats, carpet and boot.',
+      'Wipe the dash, vents, door trims and centre console with a microfibre cloth.',
+      'Wash the body with car wash soap, then dry with a chamois to avoid water spots.',
+      'Clean the wheels with dedicated wheel cleaner and a soft brush.',
+      'Apply tyre shine and clean the glass inside and out.',
+      'Polish and wax the paint every few months to protect it against UV.',
+    ],
+    'U3l4Ti1lOUpKZkxwWTAzZg': [
+      'Measure the free floor and ceiling space and note the surface underneath.',
+      'Decide the must-haves: rack or stands, barbell, plates, bench, matting.',
+      'Set a budget and buy the rack and barbell first, plates next.',
+      'Lay rubber matting over the floor before setting anything heavy down.',
+      'Check the floor load and use a spotter or safety arms for heavy lifts.',
+      'Build the space up over time as money allows rather than all at once.',
+    ],
+    'UDFaSXg3RDlJRS1Sb1l4VA': [
+      'List every page under the solutions section and mark which still show placeholder content.',
+      'Pick one incomplete page at a time and finish it before starting the next.',
+      'Match each finished page to the existing mirror theme and nav so nothing looks out of place.',
+      'Add each page to the dock nav and any related links from other pages.',
+      'Check every page loads on the mirror display at its real resolution.',
+      'Remove leftover placeholder text once a page is finished.',
+    ],
+    'V3pOVVJTOVowWXdPVlMwNQ': [
+      'Confirm the glasses support BLE and find out which GATT services they expose.',
+      'Write the ESP32 BLE server with one characteristic for gesture events.',
+      'Scan for the glasses from a phone app or nRF Connect and connect to the ring.',
+      'Send a test gesture value and confirm the glasses receive it and react.',
+      'Add reconnect logic so the link recovers when you walk out of range and come back.',
+    ],
+    'VnFQVnV2eEg5MGtLcEN3RQ': [
+      'Pick a dry day and start with the gutters so debris does not fall on clean work.',
+      'Clear leaves and rubbish from gutters, paths and driveway edges.',
+      'Pressure wash or scrub paths, steps and the driveway.',
+      'Wipe down outdoor furniture, railings and the front door.',
+      'Sweep the porch and reset anything left outside.',
+    ],
+    'WGhOa29mVm43ZmtGbHVSdQ': [
+      'Install a lightweight runtime such as llama.cpp or an ONNX runtime build for ARM.',
+      'Download a small LLM in GGUF format (1 to 3 billion parameters) and Whisper tiny.',
+      'Run Whisper tiny on a short recorded clip and time how long the transcription takes.',
+      'Run the LLM with a short prompt and measure tokens per second.',
+      'Lower the quantisation or the model size if it is too slow, and record the numbers you get.',
+    ],
+    'WTZyMWRtOEU0MWdoTS1faQ': [
+      'Record ten phrases through a normal mic on your cheek and through the bone conduction transducer.',
+      'Do it once in a quiet room and once with background noise or music playing.',
+      'Compare recordings in Audacity and look at the noise floor and speech clarity on each.',
+      'Check how much of your own speech the bone conduction pickup gets versus what others hear nearby.',
+      'Test at three contact pressures on the cheekbone to see how firm the transducer needs to be.',
+      'Pick the better path and write down the settings and mounting position that worked.',
+    ],
+    'WUdBc21PUTFadVJaSXRpRQ': [
+      'Write a test script that prompts for a gesture, records the prediction and logs hit or miss.',
+      'Run 100 or more attempts across all gestures, resting between batches to avoid fatigue.',
+      'Record accuracy per gesture, not just the overall number, to spot the weak ones.',
+      'Note any false triggers that happen while you are not gesturing.',
+      'Tune the thresholds or retrain on the misread samples and rerun the test to compare.',
+    ],
+    'Wjg4TzRMQ2Nsb1lBRmtZbQ': [
+      'Pick motion sensors that match your existing Zigbee, Thread or Z-Wave setup.',
+      'Mount them at roughly chest height, angled so they catch you as you enter rather than over you.',
+      'Pair each one in HA and name it after the room and function, like "Hallway motion".',
+      'Create an automation: motion turns the light on, no motion for a set period turns it off.',
+      'Use a light-level condition so lights do not fire during the day when it is already bright.',
+      'Set a night mode so after hours motion triggers a dim red or warm light, not full brightness.',
+    ],
+    'WlVjSGlOZ1U2NHBYZGtaZw': [
+      'Never touch the nozzle or hotend while it is hot - burns happen instantly.',
+      'Heat the nozzle to the printing temp for your filament, PLA about 220C.',
+      'Let it sit a minute, then retract the filament and pull it out with pliers.',
+      'If the tip comes out dirty or snaps, repeat with cleaning or nylon filament.',
+      'Cool down fully, then remove the nozzle and inspect it for damage or wear.',
+      'If it is still clogged, fit a new nozzle and re-run the calibration.',
+    ],
+    'X0JCTllSVlFKWDRWdnh6aQ': [
+      'Confirm your LLM backend is running and reachable on its port from the server.',
+      'Install Docker on the AI server if it is not already there.',
+      'Run the OpenWebUI container, mapping port 3000 to its internal 8080.',
+      'Set the base URL variable so it points at your local LLM endpoint.',
+      'Set the container to restart automatically so it survives reboots.',
+      'Open http://server-ip:3000, create the admin account, pull a model and test a chat.',
+    ],
+    'X2Q3U2ZSdnZnZlM5UUJRTw': [
+      'Measure the ring electronics stack: board, battery and sensor, with calipers.',
+      'Model a shell that curves with the finger, leaving the sensor face exposed.',
+      'Add a lid or sliding cover for the battery, and a small opening for the charge port.',
+      'Leave clearance so nothing presses on the sensor or shorts against the battery.',
+      'Print a draft in cheap filament, test fit on your finger, then adjust the curve and reprint.',
+      'Print the final in a smooth or flexible filament and check the fit is snug but not tight.',
+    ],
+    'Y18wQUFLa1RzSWswbXNHMg': [
+      'In the Cloudflare dashboard, add a public hostname to your existing tunnel.',
+      'Point the service at the local address and port of the app, for example http://localhost:3000.',
+      'Confirm Cloudflare created the matching DNS record for that hostname.',
+      'Reload or restart the cloudflared service on the server.',
+      'Test the public URL from outside your home network.',
+      'Put Cloudflare Access in front of it if the service should not be open to anyone.',
+    ],
+    'Y2N2WWFHbS13WFkteURlcg': [
+      'Confirm the head unit size matches the dash opening, single or double DIN, before buying adapters.',
+      'Buy the wiring harness and fascia kit made for your exact car model so no factory loom is cut.',
+      'Disconnect the battery negative terminal before touching any factory wiring.',
+      'Connect the harness to the head unit on the bench first and test it before fitting it in the dash.',
+      'Wire reverse camera, steering wheel controls and amp turn-on if you are fitting them.',
+      'Refit the dash, reconnect the battery and check radio, Bluetooth, and each input in turn.',
+      'Set the time, language and any saved presets, then tidy the wiring so nothing rattles.',
+    ],
+    'YVRtaW9fQ2xFdEwxZHRPQQ': [
+      'Buy sensors matching your existing radio, and get a couple per floor to start.',
+      'Place them out of direct sun and away from vents, heaters and doorways, around head height.',
+      'Pair each one in HA, rename by room, and set the correct Area.',
+      'Build a dashboard card showing temperature and humidity for every room side by side.',
+      'Create alerts for high humidity (mould risk) and for lows that would mean a cold sleeping room.',
+      'Link the data to your heater or fan automations so they switch based on actual room readings.',
+    ],
+    'YjdKMThveHhka28tN1B0VA': [
+      'Measure the actual current draw of the board under normal load with a USB power meter.',
+      'Size the battery so the Pi plus peripherals run for your target hours with some margin.',
+      'Pick a battery chemistry and a charge board suited to that capacity and voltage.',
+      'Add a voltage regulator if the board needs a different rail than the battery provides.',
+      'Run a full discharge test with the real workload and note how long it actually lasts.',
+    ],
+    'Z0oxczY5SjhSQTlFY3ZHTQ': [
+      'Check whether your router supports mesh or just a single access point, and note the home server IP.',
+      'Give the Orange Pi a static IP or DHCP reservation so its address never changes.',
+      'If you have more than one access point, set them to the same SSID and password and test roaming.',
+      'Confirm the Pi can reach the home server by pinging it and by hitting any service it runs.',
+      'Set up a hostname or mDNS name (like pi.local) so you do not rely on the IP.',
+    ],
+    'Z1hDZmdhNWhGbXhNdnZlYQ': [
+      'Check the GPU and driver work with nvidia-smi or rocm-smi.',
+      'Clone the ComfyUI repo and create a Python virtual environment inside it.',
+      'Install the requirements into that venv, not the system Python.',
+      'Start ComfyUI and confirm it is listening on 127.0.0.1:8188.',
+      'Download a base checkpoint model into the models/checkpoints folder.',
+      'Load the default workflow and generate one test image to confirm it works.',
+    ],
+    'ZUxZaWt4aGJKbzUxeE42SQ': [
+      'Only book an inspection on serious candidates, not every car you look at.',
+      'Book a mobile pre-purchase inspection through RACV or a local independent mechanic.',
+      'Expect to pay roughly $200-300; treat it as insurance on an $8k-15k car.',
+      'Ask the inspector to check compression, leaks, fault codes and the underside.',
+      'Read the written report before you hand over any money.',
+      'Walk away if it shows structural damage, major oil leaks or a failing transmission.',
+    ],
+    'Zm1XY0hOdGVpSDNIbnhzcw': [
+      'Decide the four gestures to start with: swipe left, swipe right, tap and scroll.',
+      'Record 20 to 30 samples of each gesture, labelled, streaming from the ESP32 to a CSV file.',
+      'Split the data into training and test sets, keeping whole recordings together, not shuffled rows.',
+      'Train a small classifier (random forest or a tiny neural net) on the windowed features.',
+      'Export the model to run on the ESP32 and check live predictions match the gesture you perform.',
+    ],
+    'a2Jva0hVWGRqMzBMTTZlZQ': [
+      'Open Settings then Devices and Services, then Add Integration for each brand you own.',
+      'Put all smart devices on a dedicated 2.4 GHz Wi-Fi SSID or VLAN so they stay separate from your main network.',
+      'Let each integration auto-discover, then rename every entity to something human like "Desk lamp".',
+      'Assign each device to an Area (room) so automations can target rooms rather than single entities.',
+      'Create a dashboard view per room and add the most used controls to it.',
+      'Run a full backup once everything shows as online and controllable.',
+    ],
+    'a3U2WnZ2bFZjNENCNmJMbw': [
+      'Trigger it by a set time, or by a "good night" command to the voice assistant.',
+      'Turn off all lights except a hallway or bedside night light at low brightness.',
+      'Switch off the smart plugs for lamps, fans and desk gear that do not need to stay powered.',
+      'Lock doors if you have smart locks, and arm any alarm or camera notifications.',
+      'Set the thermostat or heater down for overnight temperatures.',
+      'Add a condition using your phone as a presence sensor so it only runs when you are actually home.',
+    ],
+    'aENvZ3c1UUh6RUdzaWtFbg': [
+      'Create a car page on the mirror and add it to the dock nav.',
+      'Add a maintenance log table: date, kilometres, service done and cost.',
+      'Add a savings progress bar showing the current amount against your goal.',
+      'Store the data in the backend or a JSON file so the page loads it rather than hardcoding it.',
+      'Add a simple way to record a new log entry without editing the page by hand.',
+      'Style it to match the other pages and check it renders on the mirror display.',
+    ],
+    'aEVwVGJPNlpCTURndUhKTg': [
+      'Put the camera board and the AI server on the same wifi network and confirm they can ping each other.',
+      'Choose a transport: MJPEG over HTTP or WebSocket works fine to start with.',
+      'Write a small server script that receives frames and saves them to disk for testing.',
+      'Send test frames from the camera and check frame rate, latency and image quality on the server.',
+      'Add reconnect logic so streaming resumes by itself if wifi drops.',
+      'Measure real latency end to end and note whether it is fast enough for live help.',
+    ],
+    'aFRZMVZsSUVZQWhFdGY3eQ': [
+      'Read the exact error code or message shown on the touchscreen.',
+      'Write it down exactly, including any numbers and letters.',
+      'Open the Bambu Lab Wiki in a browser and use its search box.',
+      'Search the code together with your printer model, for example P1S or X1C.',
+      'Follow the wiki page steps for that specific code.',
+      'If nothing matches, search the same code on the Bambu Lab forum or the printer subreddit.',
+    ],
+    'aVA1dThROFl3aFYxX09mcw': [
+      'Park on level ground and let the engine cool before checking anything.',
+      'Pull the dipstick, wipe it, reinsert it and check oil sits between min and max.',
+      'Check the coolant reservoir when cold and top up with the correct mix if low.',
+      'Check brake fluid against the MAX line and note if it looks dark or low.',
+      'Set tyre pressures to the placard on the driver door jamb.',
+      'Measure tread in three spots across each tyre; replace at 1.5 mm or if uneven.',
+    ],
+    'aVI0c1FJTUlTY2tWSVJjUQ': [
+      'Unplug the PSU from the wall and from every component, then let it sit for a minute before touching the 24-pin.',
+      'Find the green wire on the 24-pin ATX connector, which is PS_ON, and the black wires next to it, which are ground.',
+      'Bend a paperclip into a U and push one end into the green pin and the other into a black ground pin on the 24-pin plug.',
+      'Plug the PSU back into the wall and switch it on at the rocker switch, then watch and listen for the fan to spin.',
+      'No fan and no sound means that PSU is dead, so label it and set it aside for recycling or parts.',
+      'If it spins, plug in a case fan or a spare drive to confirm it holds a load, since some failing PSUs spin with no load but drop out under it.',
+    ],
+    'amNBcEVCR1QzZjN4NTlRRA': [
+      'Measure the pendant electronics, battery and camera module and plan their layout.',
+      'Sketch the enclosure in CAD with a lid, a cable exit for the glasses lead and a mounting loop.',
+      'Add a vent or heatsink path if any part gets warm, and keep the battery away from the camera.',
+      'Print a draft in low infill and check the boards, battery and cable all fit without forcing.',
+      'Fix clearance and screw or clip features, then reprint and test the closure holds shut.',
+      'Wear the finished pendant for a day and adjust for weight, cable pull and comfort.',
+    ],
+    'b3VPMWZoN3ZhRFlud3B2Tg': [
+      'Stick a numbered label on every RAM stick so you can match each one to a result later.',
+      'Fit one stick at a time in slot A2, which is the correct slot for a single stick on most boards.',
+      'Boot into the BIOS and check the detected capacity and speed match the stick you fitted.',
+      'Run MemTest86 from a USB stick for at least one full pass and stop the test the moment it reports an error.',
+      'Record the result against the stick label and set faulty sticks aside in a separate pile.',
+      'After testing singles, test your best pairs together to confirm they run at the speed and timings you want.',
+    ],
+    'bHphcXZPT3ZCcTdOaDRYRQ': [
+      'List the days and hours you can actually work around reffing and school.',
+      'Decide what you want: casual retail, cafe, warehouse or labouring.',
+      'Write a one-page resume with your reffing and coaching work on it.',
+      'Apply to at least five local Sherbrooke or nearby businesses in person.',
+      'Set up a separate email and check it daily for replies.',
+      'Follow up on any application after one week if you have not heard back.',
+    ],
+    'bVN6NWVrazgySHQ3bmZuWQ': [
+      'Decide the source: HA media players, Chromecast or Google speakers, Sonos, or Snapcast for true sync.',
+      'For tight sync across rooms, run Snapcast with one server and a client per speaker or Pi.',
+      'Set up Music Assistant in HA so Spotify and your local library appear as one source.',
+      'Group speakers into zones, like study, living and outside, that can also play as one group.',
+      'Add voice or dashboard commands for play, pause, skip, volume and moving music between rooms.',
+      'Test for drift by leaving the same track playing across all zones for an hour and listening for echo.',
+    ],
+    'bmN1RFdjUldtN3laVlZXNQ': [
+      'Identify the fault: handle will not pull, feels stiff, or the door will not latch.',
+      'Find a repair video or workshop manual for your exact model and year.',
+      'Buy the correct replacement handle or repair kit for your model.',
+      'Remove the door trim, unclip the linkages and swap the handle or reattach the rod.',
+      'Test the door opens and locks from inside and outside before refitting the trim.',
+      'If the lock actuator or wiring is faulty, get an auto electrician to check it.',
+    ],
+    'bmgwZWliRWljS3VBekR2Nw': [
+      'Buy two or three cheap frames you can cut without regret before touching the good one.',
+      'Hot-glue the display module into a test position above the right lens and wear it for an hour.',
+      'Mount the bone conduction transducer along the temple arm with tape and check it touches your cheekbone.',
+      'Route thin wires along the arm with heatshrink so they do not pull on the frame.',
+      'Run a short cable to a benchtop power supply and confirm display and audio both work while worn.',
+      'Note every comfort and alignment problem before committing to the final frame.',
+    ],
+    'c2VaYm11RjJGMWF2T05Oaw': [
+      'Search GitHub for open-source gesture ring and smart ring projects, note stars and last commit date.',
+      'Filter to projects using IMU-only sensing (accelerometer plus gyroscope), not camera based ones.',
+      'Read the hardware list and schematic for the two or three most active projects.',
+      'Check which offer pretrained models or public datasets you can reuse.',
+      'Write a short shortlist file with repo link, licence, sensors used and what you would copy.',
+    ],
+    'c3pvSHBPX2x0TjhpWmJlWQ': [
+      'Search Carsales for IS250, GS300 and Crown listings Australia-wide to see asking prices.',
+      'Filter to cars with 150,000-250,000 km and note the price range for each model.',
+      'Check Redbook or Glass’s Guide for estimated private and dealer values.',
+      'Read owner forums to note common faults and typical repair costs for each model.',
+      'Record findings in a spreadsheet: model, year, km, price, location, notes.',
+      'Set a realistic budget ceiling based on what the market actually shows.',
+    ],
+    'cFRXYVF3b0FGTGhjXzlZUQ': [
+      'Unload the filament and cut the end cleanly at an angle with side cutters.',
+      'Remove the extruder cover following the Bambu Wiki page for your model.',
+      'Inspect the drive gears for flattened filament, dust or chewed plastic.',
+      'Brush the debris out with a small brush - do not scrape metal tools on the gears.',
+      'Reassemble the extruder and reload the filament.',
+      'Run a test extrusion from the screen and confirm it flows evenly.',
+    ],
+    'cWhEQlFlQVRsU05jOXI2Ng': [
+      'Book the inspection in daylight so you can see paint and panel damage properly.',
+      'Start the engine from cold and listen for rattles, knocking or a rough idle.',
+      'Drive at least 20 minutes covering suburban streets, a highway and a roundabout.',
+      'Test the brakes, steering, air con, all windows, lights and every dash button.',
+      'Watch for vibrations, pulling, transmission hesitation and warning lights.',
+      'Let the engine sit 10 minutes after the drive, then check for leaks under the car.',
+    ],
+    'ckNMazNJSXF1bDVqalBETg': [
+      'Create a new mirror page for hardware and add it to the dock nav.',
+      'List each machine, board or device with its role and key specs such as CPU, RAM and storage.',
+      'Add build or purchase date and where each item physically lives.',
+      'Note which services run on each device so you know what breaks when it goes down.',
+      'Style it to match the other mirror pages and check it fits the display.',
+      'Keep it updated whenever you add or retire hardware.',
+    ],
+    'dC1YN25WLW54a0N1TzA1aw': [
+      'Write down what you need: mail on your own domain, free tier, catch-all, aliases and forwarding.',
+      'Compare Cloudflare Email Routing, Zoho Mail, Proton and SimpleLogin against that list.',
+      'Rule out any option that cannot send from your domain or has a free tier you cannot live with.',
+      'Pick one as primary and use the others only where they fill a gap, such as alias addresses.',
+      'Sign up for the chosen provider and add the DNS records it gives you for lch-mail.com.',
+      'Record the decision and why you made it so future you does not redo this.',
+    ],
+    'dFBnYjYyUXBFeFJ0bmZPcQ': [
+      'Find the Starlink return email or log in to your Starlink account.',
+      'Start the return through the account and print the prepaid label.',
+      'Pack the dish, router, cables and mount in the original box if you have it.',
+      'Attach the label and drop it at the nominated carrier or post office.',
+      'Keep the tracking receipt until the refund lands.',
+    ],
+    'dVQ5N25Ya1RKSGlCVlZkZQ': [
+      'Check the owner handbook for the service interval; most are 10,000 km or 6 months.',
+      'Book it with a mechanic who knows Lexus or Toyota, or do it yourself if confident.',
+      'Change engine oil and filter, and check air filter, cabin filter and spark plugs.',
+      'Ask the mechanic to check the timing chain, water pump and drive belts.',
+      'Reset the service light and note the date and km in your log.',
+      'File the invoice so it becomes part of the service history.',
+    ],
+    'dmotdmFkUUVTSjdTUk9oOA': [
+      'Log in to the registrar account that holds lch-mail.com before September 28.',
+      'Check auto-renew is on, or renew manually before the expiry date.',
+      'Check the card on file is current and has enough for the renewal fee.',
+      'Confirm the renewal went through and note the new expiry date.',
+    ],
+    'eEVEWV9aZGdic0FmeTB6Rg': [
+      'Decide per room whether you want colour or just warm and cool white, and how many bulbs per fitting.',
+      'For Hue you need the Hue Bridge or a Zigbee coordinator you already run for other devices.',
+      'Check bulb fitting and whether it is mains or low-voltage before ordering anything.',
+      'Pair bulbs one at a time, then group them by room or by fixture type.',
+      'Create scenes for study, movie night and wind-down so you are not setting each bulb by hand.',
+      'Set a default power-on brightness so a wall-switch flick does not blast full white.',
+    ],
+    'eFdmcEtyU01yYnlZbFRzRA': [
+      'Count how many things you want switched: lamps, fans, PC, monitor, chargers, and note the wattage of each.',
+      'Check the plug rating against that load, since a PC plus monitor can pull a fair bit of power.',
+      'Buy AU-plug compatible units from a brand HA integrates with (Kasa and Tapo both work well).',
+      'Set the plugs up one at a time in the brand app first, then add the integration to HA.',
+      'Rename each one in HA after what it actually powers, then assign it to a room.',
+      'Add them to your morning and night automations, and set the PC plug to stay off during school hours.',
+    ],
+    'eGluaHVsNkEtVmctbHNOdg': [
+      'Decide what the camera necklace needs to detect, since that drives whether cloud is worth it.',
+      'Create a Google Cloud project, enable the Vision API and set up a service account key.',
+      'Keep the key off the device where possible, and proxy requests through the home server instead.',
+      'Send a test image and check the JSON response for the labels or text you need.',
+      'Add rate limits and a fallback, since cloud calls cost money and need a working connection.',
+    ],
+  };
+
   // ================= item detail window =================
   // Click a card on the To Do board and its instructions open here, in a window shaped
   // like the Spotify player's. The panel itself is generic: it takes a title, some meta
@@ -3128,6 +3827,9 @@
   //
   // Exposed on window because the app pages run in a different scope and need to call it.
   var tdOpen = false;
+  var tdItem = null;          // the item currently on screen
+  var tdRemoveHook = null;    // the board's reload fn, so a delete refreshes the board
+  var tdRemoveTimer = null;
 
   function tdEl(id) { return document.getElementById(id); }
 
@@ -3179,6 +3881,18 @@
     if (kindEl) kindEl.textContent = item.kind || 'Item';
     if (titleEl) titleEl.textContent = item.title || 'Untitled';
     if (metaEl) metaEl.textContent = item.meta || '';
+
+    // remember what is on screen and re-arm the remove button, so a previous armed
+    // state can never carry over to the next item
+    tdItem = item;
+    tdRemoveHook = item.onRemoved || null;
+    tdDisarmRemove();
+    // no id means nothing to delete (a card that somehow opened without one)
+    var remBtn = tdEl('td-remove');
+    if (remBtn) {
+      remBtn.style.display = item.id ? '' : 'none';
+      remBtn.textContent = 'Remove';
+    }
 
     if (stepsEl) {
       stepsEl.innerHTML = '';
@@ -3232,6 +3946,53 @@
     if (bodyEl) bodyEl.scrollTop = 0;
   }
 
+  // Remove deletes the task from Google Tasks for good, so it needs a second click.
+  function tdDisarmRemove() {
+    if (tdRemoveTimer) { clearTimeout(tdRemoveTimer); tdRemoveTimer = null; }
+    var b = tdEl('td-remove');
+    var note = tdEl('td-remove-note');
+    if (b) { b.textContent = 'Remove'; b.className = ''; }
+    if (note) note.textContent = '';
+  }
+
+  function tdRemove() {
+    var b = tdEl('td-remove');
+    var note = tdEl('td-remove-note');
+    if (!tdItem || !tdItem.id) return;
+
+    if (b && b.className !== 'armed') {
+      if (b) { b.textContent = 'Delete for good?'; b.className = 'armed'; }
+      if (note) note.textContent = 'Tap again to confirm - this cannot be undone.';
+      if (tdRemoveTimer) clearTimeout(tdRemoveTimer);
+      tdRemoveTimer = setTimeout(tdDisarmRemove, 5000);
+      return;
+    }
+
+    var id = tdItem.id;
+    // capture the hook BEFORE closing: tdCloseWindow() clears it, and closing first
+    // meant the board never reloaded after a successful delete
+    var afterRemove = tdRemoveHook;
+    tdDisarmRemove();
+    if (b) { b.disabled = true; b.textContent = 'Removing...'; }
+    if (note) note.textContent = '';
+
+    fetch('http://localhost:2008/api/tasks/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id })
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      if (res && res.error) throw new Error(res.error);
+      tdCloseWindow();
+      if (typeof afterRemove === 'function') afterRemove();
+    }).catch(function (err) {
+      console.error('task remove failed', err);
+      if (b) { b.disabled = false; b.textContent = 'Remove'; }
+      if (note) note.textContent = 'Could not remove that task.';
+    });
+  }
+
+  if (tdEl('td-remove')) tdEl('td-remove').addEventListener('click', tdRemove);
+
   function tdCloseWindow() {
     if (!tdOpen) return;
     tdOpen = false;
@@ -3244,6 +4005,9 @@
     }
     if (bd) bd.classList.remove('open');
     document.body.classList.remove('td-open');
+    tdDisarmRemove();
+    tdItem = null;
+    tdRemoveHook = null;
   }
 
   if (tdEl('td-close')) tdEl('td-close').addEventListener('click', tdCloseWindow);
@@ -3644,10 +4408,14 @@
             if (pgkSuppressClick || pgkDragId !== null) { return; }
             if (typeof window.pgTodoOpenWindow === 'function') {
               window.pgTodoOpenWindow({
+                id: task.id,
+                onRemoved: pgkLoad,
                 kind: 'To Do \u00b7 P' + pgkPrio(task.title),
                 title: hwClean(task.title),
                 meta: (task.list ? task.list : '') + (task.due ? ' \u00b7 due ' + String(task.due).slice(0, 10) : ''),
-                steps: []            // to be authored per item
+                // look the steps up by task id; unknown ids fall through to the
+                // 'no instructions' message rather than showing another task's steps
+                steps: (typeof TD_INSTRUCTIONS !== 'undefined' && TD_INSTRUCTIONS[task.id]) || []
               }, card);
             }
           });
