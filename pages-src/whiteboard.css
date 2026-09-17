@@ -1,0 +1,131 @@
+/* ============ WHITEBOARD (meds-style window, 86vw x 64vh) ============ */
+body.whiteboard #clockbox { left: 34px; top: 22px; transform: none; text-align: left; }
+body.whiteboard #orbwrap { left: 100%; top: 14px; width: 13vmin; height: 13vmin; transform: translateX(calc(-100% - 34px)); }
+body.whiteboard #orb-glow { width: 20vmin; height: 20vmin; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+body.whiteboard #spotify-pill { left: 50%; top: 16px; transform: translateX(-50%); }
+body.whiteboard #window { display: flex; left: 50%; top: 50%; width: 86vw; height: 64vh; transform: translate(-50%, -50%); max-width: 1400px; }
+body.whiteboard #app-ring { display: none; }
+
+/* window body becomes a full-bleed drawing surface */
+body.whiteboard #window-body { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+
+#whiteboard-body { flex: 1 1 auto; display: none; flex-direction: column; min-height: 0; }
+
+/* ---- tool row ---- */
+#wb-tools {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--card-border);
+  background: rgba(255,255,255,.03);
+  user-select: none;
+  -webkit-user-select: none;
+}
+#wb-tools .wb-toolgroup { display: flex; align-items: center; gap: 10px; }
+#wb-tools .wb-grouplabel { color: var(--muted); font-size: .85rem; letter-spacing: 1px; text-transform: uppercase; }
+
+/* color swatches */
+.wb-swatch {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.25);
+  background: #f5f7fa;
+  cursor: pointer;
+  padding: 0;
+  flex: 0 0 auto;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.wb-swatch:hover { transform: scale(1.08); }
+.wb-swatch.active {
+  box-shadow: 0 0 0 3px rgba(10,20,14,.9), 0 0 0 5px var(--accent);
+  transform: scale(1.08);
+}
+.wb-swatch[data-color="#7ff0b8"] { background: #7ff0b8; }
+.wb-swatch[data-color="#fde047"] { background: #fde047; }
+.wb-swatch[data-color="#f87171"] { background: #f87171; }
+
+/* pen sizes */
+.wb-size {
+  min-width: 48px; height: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: rgba(255,255,255,.05);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  flex: 0 0 auto;
+  transition: background .15s ease, border-color .15s ease;
+}
+.wb-size:hover { background: rgba(255,255,255,.12); }
+.wb-size.active { border-color: var(--accent); background: rgba(110,231,183,.18); }
+.wb-size .wb-dot { border-radius: 50%; background: var(--text); display: block; }
+.wb-size[data-size="4"] .wb-dot { width: 10px; height: 10px; }
+.wb-size[data-size="9"] .wb-dot { width: 17px; height: 17px; }
+.wb-size[data-size="18"] .wb-dot { width: 26px; height: 26px; }
+
+/* clear / save buttons */
+.wb-action {
+  min-height: 48px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: rgba(255,255,255,.05);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: .5px;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.wb-action:hover { background: rgba(255,255,255,.12); }
+#wb-save { border-color: rgba(110,231,183,.55); color: var(--accent); }
+#wb-save:hover { background: rgba(110,231,183,.18); }
+#wb-clear { border-color: rgba(248,113,113,.55); color: #f87171; }
+#wb-clear:hover { background: rgba(248,113,113,.15); }
+#wb-tools .wb-spacer { flex: 1 1 auto; }
+
+/* ---- canvas area ---- */
+#wb-canvaswrap { flex: 1 1 auto; position: relative; min-height: 0; }
+#wb-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+  background:
+    linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px),
+    #07130c;
+  background-size: 44px 44px, 44px 44px, auto;
+}
+
+/* ---- clear confirm overlay ---- */
+#wb-confirm {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2,10,5,.72);
+  z-index: 5;
+}
+#wb-confirm.open { display: flex; }
+#wb-confirm-card {
+  background: rgba(10,20,14,.96);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 26px 30px;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0,0,0,.55);
+}
+#wb-confirm-card .wb-confirm-title { color: var(--text); font-size: 1.25rem; font-weight: 600; margin: 0 0 8px; }
+#wb-confirm-card .wb-confirm-note { color: var(--muted); font-size: 1rem; margin: 0 0 20px; }
+#wb-confirm-card .wb-confirm-btns { display: flex; gap: 12px; justify-content: center; }
+#wb-confirm-card .wb-action { min-width: 130px; }

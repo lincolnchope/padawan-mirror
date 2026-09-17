@@ -1,0 +1,37 @@
+<!-- ============================================================
+  MUSIC page — window-body div block (paste inside #window-body).
+  Parent showLayout wiring:
+    case 'music':
+      wt.textContent = 'Music';
+      hideAll();
+      show(musicBody, 'flex');
+      if (typeof loadMusic === 'function') loadMusic();
+  ============================================================ -->
+<div id="music-body" style="display:none">
+  <div class="music-stack">
+    <div class="music-card idle" id="music-card">
+      <div class="music-label" id="music-label">Now playing</div>
+      <div class="music-track" id="music-track">Not playing</div>
+      <div class="music-artist" id="music-artist"></div>
+      <div class="music-meta" id="music-meta"></div>
+    </div>
+
+    <div class="music-transport" id="music-transport">
+      <button class="music-side" id="music-prev" title="Previous track" aria-label="Previous track">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor" aria-hidden="true"><path d="M6 6h2v12H6zM20 6l-10 6 10 6z"/></svg>
+      </button>
+      <button class="music-play" id="music-play" title="Play or pause" aria-label="Play or pause">
+        <svg id="music-play-ico" viewBox="0 0 24 24" width="52" height="52" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button class="music-side" id="music-next" title="Next track" aria-label="Next track">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor" aria-hidden="true"><path d="M16 6h2v12h-2zM4 6l10 6-10 6z"/></svg>
+      </button>
+    </div>
+
+    <div class="music-auth" id="music-auth" style="display:none">
+      <span class="music-connect-note">Run "hermes auth spotify" in a terminal to connect.</span>
+    </div>
+
+    <div class="music-error" id="music-error" style="display:none" role="status"></div>
+  </div>
+</div>

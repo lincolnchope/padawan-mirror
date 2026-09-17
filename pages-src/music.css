@@ -1,0 +1,125 @@
+/* ============================================================
+   MUSIC page — Padawan Mirror
+   Scoped CSS block (body.music prefixes), dark theme vars from :root.
+   Window: meds-style (86vw x 64vh, centred).
+   Integration notes for parent:
+   - add body class 'music' via showLayout
+   - window title: 'Music'
+   - show #music-body with display flex
+   - call loadMusic() when the layout is shown
+   - add body.music to the #app-ring hide list if desired
+   ============================================================ */
+
+/* window: meds-style */
+body.music #window { display: flex; left: 50%; top: 50%; width: 86vw; height: 64vh; transform: translate(-50%, -50%); max-width: 1400px; }
+
+/* clock top-left, orb top-right, pill top-centre (matches other window pages) */
+body.music #clockbox { left: 34px; top: 22px; transform: none; text-align: left; }
+body.music #orbwrap { left: 100%; top: 14px; width: 13vmin; height: 13vmin; transform: translateX(calc(-100% - 34px)); }
+body.music #orb-glow { width: 20vmin; height: 20vmin; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+body.music #spotify-pill { left: 50%; top: 16px; transform: translateX(-50%); }
+body.music #app-ring { display: none; }
+
+/* inner layout */
+body.music #music-body { min-height: 100%; }
+body.music #music-body { display: flex; flex-direction: column; }
+body.music .music-stack {
+  flex: 1 1 auto;
+  min-height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 26px;
+}
+
+/* now-playing card */
+body.music .music-card {
+  width: 100%; max-width: 900px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 26px 30px 22px;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(0,0,0,.35);
+}
+body.music .music-label {
+  color: var(--accent);
+  font-weight: 700; letter-spacing: 3px;
+  font-size: 1rem; text-transform: uppercase;
+}
+body.music .music-track {
+  color: var(--text);
+  font-size: 2.5rem; font-weight: 700; line-height: 1.15;
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+body.music .music-artist {
+  color: var(--muted);
+  font-size: 1.5rem; font-weight: 500;
+  margin-top: 6px; min-height: 1.3em;
+  overflow-wrap: anywhere;
+}
+body.music .music-meta {
+  color: var(--muted);
+  font-size: 1.05rem; letter-spacing: 1px;
+  margin-top: 12px; min-height: 1.2em;
+}
+body.music .music-state-playing { color: var(--accent); }
+body.music .music-card.idle .music-track { color: var(--muted); font-weight: 600; }
+
+/* transport row — big touch targets (min 80px) */
+body.music .music-transport {
+  display: flex; align-items: center; justify-content: center;
+  gap: 34px;
+}
+body.music .music-transport button {
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(110,231,183,.14);
+  border: 1px solid rgba(110,231,183,.45);
+  color: var(--text);
+  transition: background .2s ease, transform .1s ease;
+}
+body.music .music-transport button:hover { background: rgba(110,231,183,.30); }
+body.music .music-transport button:active { transform: scale(.96); background: rgba(110,231,183,.36); }
+body.music .music-transport svg { pointer-events: none; }
+body.music .music-side {
+  width: 88px; height: 88px;
+  min-width: 80px; min-height: 80px;
+}
+body.music .music-play {
+  width: 120px; height: 120px;
+  min-width: 120px; min-height: 120px;
+  background: rgba(110,231,183,.22);
+  border: 1px solid rgba(110,231,183,.65);
+}
+
+/* connect (auth) row */
+body.music .music-auth { display: flex; align-items: center; justify-content: center; gap: 18px; }
+body.music .music-connect {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 220px; min-height: 80px;
+  padding: 0 34px;
+  border-radius: 16px;
+  background: rgba(110,231,183,.18);
+  border: 1px solid rgba(110,231,183,.55);
+  color: var(--accent);
+  font-size: 1.35rem; font-weight: 700; letter-spacing: 1px;
+  text-decoration: none;
+}
+body.music .music-connect:hover { background: rgba(110,231,183,.32); }
+
+/* backend-down: plain-text error strip */
+body.music .music-error {
+  width: 100%; max-width: 900px;
+  text-align: center;
+  color: #f5c66b;
+  background: rgba(245,158,11,.10);
+  border: 1px solid rgba(245,158,11,.45);
+  border-radius: 14px;
+  padding: 14px 18px;
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+
+/* transport dimmed while unavailable */
+body.music .music-transport.disabled { opacity: .35; pointer-events: none; }  .music-connect-note { color: var(--muted); font-size: 1.1rem; padding: 14px 22px; background: rgba(255,255,255,.04); border: 1px solid var(--card-border); border-radius: 14px; }

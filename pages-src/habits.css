@@ -1,0 +1,71 @@
+/* ===== HABITS (meds-style window: template1 top row + 86vw x 64vh centered) ===== */
+body.habits #clockbox { left: 34px; top: 22px; transform: none; text-align: left; }
+body.habits #orbwrap { left: 100%; top: 14px; width: 13vmin; height: 13vmin; transform: translateX(calc(-100% - 34px)); }
+body.habits #orb-glow { width: 20vmin; height: 20vmin; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+body.habits #spotify-pill { left: 50%; top: 16px; transform: translateX(-50%); }
+body.habits #window { display: flex; left: 50%; top: 50%; width: 86vw; height: 64vh; transform: translate(-50%, -50%); max-width: 1400px; }
+
+#habits-body { display: none; flex-direction: column; height: 100%; padding: 0; gap: 14px; }
+
+/* add bar — small input + add button, top of window */
+#habits-addbar { display: flex; gap: 10px; flex: 0 0 auto; }
+#habits-in {
+  flex: 1 1 auto; min-width: 0;
+  font-family: inherit; font-size: 1.05rem; color: var(--text);
+  background: rgba(255,255,255,.05); border: 1px solid var(--card-border);
+  border-radius: 12px; padding: 12px 16px; outline: none;
+}
+#habits-in::placeholder { color: var(--muted); }
+#habits-in:focus { border-color: rgba(110,231,183,.5); }
+#habits-add {
+  flex: 0 0 auto; min-width: 64px;
+  font-size: 1.5rem; font-weight: 700; line-height: 1;
+  color: var(--accent); background: rgba(110,231,183,.16);
+  border: 1px solid rgba(110,231,183,.4); border-radius: 12px;
+  padding: 8px 18px;
+}
+#habits-add:hover { background: rgba(110,231,183,.4); }
+
+/* habit chip grid — big tap targets */
+#habits-grid {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px; align-content: start; padding-bottom: 6px;
+}
+.hab-chip {
+  position: relative; min-height: 96px;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
+  gap: 4px; padding: 14px 48px 14px 18px; text-align: left;
+  background: rgba(255,255,255,.04); border: 1px solid var(--card-border);
+  border-radius: 16px; color: var(--text);
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  transition: background .15s ease, border-color .15s ease, transform .08s ease;
+}
+.hab-chip:active { transform: scale(.98); }
+.hab-chip .hab-name { font-weight: 600; font-size: 1.3rem; color: var(--text); word-break: break-word; line-height: 1.15; }
+.hab-chip .hab-streak { font-weight: 800; font-size: 2rem; line-height: 1; color: var(--muted); }
+.hab-chip .hab-streak-label { font-size: .8rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.hab-chip .hab-state {
+  position: absolute; right: 14px; bottom: 12px;
+  font-size: .78rem; font-weight: 700; letter-spacing: 1px;
+  color: var(--muted); text-transform: uppercase;
+}
+/* done today */
+.hab-chip.done { background: rgba(110,231,183,.14); border-color: rgba(110,231,183,.55); }
+.hab-chip.done .hab-name { color: var(--accent); }
+.hab-chip.done .hab-streak { color: var(--accent); }
+.hab-chip.done .hab-state { color: var(--accent); }
+/* zero streak */
+.hab-chip.streak0 .hab-streak { opacity: .5; }
+
+/* small remove x in chip corner */
+.hab-x {
+  position: absolute; top: 8px; right: 8px;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; font-weight: 700; line-height: 1;
+  color: var(--muted); background: transparent; border: 1px solid transparent;
+}
+.hab-x:hover { color: #f87171; border-color: rgba(248,113,113,.5); background: rgba(248,113,113,.1); }
+
+.hab-empty { color: var(--muted); text-align: center; padding: 40px 0; grid-column: 1 / -1; }

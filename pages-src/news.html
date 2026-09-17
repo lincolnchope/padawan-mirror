@@ -1,0 +1,19 @@
+<!-- ============================================================
+  NEWS page — window-body div block (paste inside #window-body).
+  Parent showLayout wiring:
+    case 'news':
+      wt.textContent = 'News';
+      hideAll();
+      show(newsBody, 'flex');
+      if (typeof loadNews === 'function') loadNews();
+  ============================================================ -->
+<div id="news-body" style="display:none">
+  <div id="news-top">
+    <div id="news-updated"></div>
+    <button id="news-refresh" title="Refresh headlines">Refresh</button>
+  </div>
+  <div id="news-status" role="status"></div>
+  <div id="news-list">
+    <div class="news-empty">Loading headlines</div>
+  </div>
+</div>

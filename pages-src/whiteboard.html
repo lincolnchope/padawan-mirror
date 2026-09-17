@@ -1,0 +1,33 @@
+<div id="whiteboard-body" style="display:none">
+  <div id="wb-tools">
+    <div class="wb-toolgroup">
+      <span class="wb-grouplabel">Colour</span>
+      <button class="wb-swatch active" data-color="#f5f7fa" title="White"></button>
+      <button class="wb-swatch" data-color="#7ff0b8" title="Green"></button>
+      <button class="wb-swatch" data-color="#fde047" title="Yellow"></button>
+      <button class="wb-swatch" data-color="#f87171" title="Red"></button>
+    </div>
+    <div class="wb-toolgroup">
+      <span class="wb-grouplabel">Pen</span>
+      <button class="wb-size active" data-size="4" title="Fine"><span class="wb-dot"></span></button>
+      <button class="wb-size" data-size="9" title="Medium"><span class="wb-dot"></span></button>
+      <button class="wb-size" data-size="18" title="Broad"><span class="wb-dot"></span></button>
+    </div>
+    <span class="wb-spacer"></span>
+    <button class="wb-action" id="wb-save">SAVE PNG</button>
+    <button class="wb-action" id="wb-clear">CLEAR</button>
+  </div>
+  <div id="wb-canvaswrap">
+    <canvas id="wb-canvas"></canvas>
+    <div id="wb-confirm">
+      <div id="wb-confirm-card">
+        <p class="wb-confirm-title">Clear the whiteboard?</p>
+        <p class="wb-confirm-note">Everything drawn will be removed.</p>
+        <div class="wb-confirm-btns">
+          <button class="wb-action" id="wb-confirm-yes">CLEAR</button>
+          <button class="wb-action" id="wb-confirm-no">CANCEL</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

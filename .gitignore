@@ -1,0 +1,13 @@
+# runtime logs
+logs/
+*.log
+
+# local backups of edited files
+*.bak
+*.bak-*
+index.full.html
+*.pre-*-20*
+
+# OS / editor noise
+.DS_Store
+*.swp

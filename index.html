@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Padawan Mirror</title>
+<style>
+  :root {
+    --orb-color: #00e676;
+    --bg-1: #0a2e1a; --bg-2: #061a0f; --bg-3: #020a05;
+    --text: #eef7f0; --muted: #a9c8b6; --accent: #7ff0b8;
+    --card: rgba(255,255,255,.05); --card-border: rgba(255,255,255,.14);
+    /* One typeface everywhere. Inter ships with this machine and is also the
+       desktop UI font, so it renders identically on the mirror and in Chrome.
+       "Segoe UI" is NOT installed here — it silently fell back to Selawik. */
+    --font: "Inter", "Noto Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --ease: cubic-bezier(.6,.05,.28,.99);
+    --dur: .6s;
+  }
+  * { box-sizing: border-box; }
+  /* Belt and braces: the app font is the DEFAULT on every element, so no control
+     can silently fall back to the browser's Times New Roman. Declaring it on the
+     universal selector beats the UA stylesheet for input/textarea/select. */
+  * { font-family: var(--font); }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(circle at 50% 30%, var(--bg-1) 0%, var(--bg-2) 40%, var(--bg-3) 70%, #000 100%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: var(--font);
+    height: 100vh;
+  }
+  button { font-family: inherit; color: inherit; cursor: pointer; background: none; border: none; }
+
+  /* ===== stage ===== */
+  #stage { position: fixed; inset: 0; }
+
+  /* every positioned element animates left/top/width/height + opacity */
+  .anim {
+    position: absolute;
+    transition:
+      left var(--dur) var(--ease),
+      top var(--dur) var(--ease),
+      width var(--dur) var(--ease),
+      height var(--dur) var(--ease),
+      opacity var(--dur) var(--ease);
+  }
+
+  /* ===== clock block (size never changes; only position) ===== */
+  #clockbox { display: flex; flex-direction: column; text-align: center; line-height: 1.05; will-change: left, top; }
+  #clockbox .t { font-weight: 700; letter-spacing: 1px; font-size: 2.7rem; }
+  #clockbox .d { color: var(--muted); letter-spacing: 1px; font-size: 1.2rem; }
+  #clockbox .a { color: var(--accent); font-weight: 600; margin-top: 3px; font-size: 1.6rem; }
+  #clockbox .at { color: var(--muted); font-size: 1rem; }
+
+  /* ===== orb ===== */
+  #orbwrap { display: flex; flex-direction: column; align-items: center; justify-content: center; will-change: left, top, width, height; }
+  #orb-glow {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,230,118,.35) 0%, rgba(0,230,118,.12) 40%, transparent 70%);
+    filter: blur(20px); animation: orb-pulse 3.5s ease-in-out infinite; pointer-events: none;
+    transition: width var(--dur) var(--ease), height var(--dur) var(--ease);
+  }
+  @keyframes orb-pulse { 0%,100% { transform:scale(1); opacity:0.85; } 50% { transform:scale(1.12); opacity:1; } }
+  #orb { position: relative; display: block; cursor: pointer; }
+  #orb-label { color: var(--muted); letter-spacing: 3px; font-size: .8rem; margin-top: 6px; }
+  /* The home screen is the calm one — the orb speaks for itself, so the READY /
+     LISTENING word under it is hidden here. Hub and leaf pages keep it. */
+  body.home #orb-label { display: none; }
+
+  /* ===== spotify pill ===== */
+  #spotify-pill {
+    display: flex; align-items: center; gap: 16px;
+    background: rgba(10,20,14,.8); border: 1px solid var(--card-border);
+    border-radius: 100px; padding: 8px 20px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.5); backdrop-filter: blur(8px);
+    will-change: left, top;
+  }
+  #sp-ico { color: var(--accent); font-weight: 800; font-size: 1rem; flex: 0 0 auto; }
+  #sp-text { display: flex; flex-direction: column; min-width: 0; }
+  #sp-title { font-weight: 600; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sp-artist { color: var(--muted); font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sp-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(110,231,183,.16); border: 1px solid rgba(110,231,183,.4);
+    color: var(--accent); display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  }
+  .sp-btn.play { width: 52px; height: 52px; background: rgba(110,231,183,.32); }
+  .sp-btn:hover { background: rgba(110,231,183,.4); }
+  /* The pill positions itself with translateX(-50%) on home/hub (see the layout rules
+     below). Any transform here must PRESERVE that, or the pill snaps to the left edge —
+     so each state repeats the centring translate. */
+  #spotify-pill { cursor: pointer; transition: transform .3s var(--ease), border-color .2s var(--ease); }
+  #spotify-pill:hover { border-color: rgba(110,231,183,.5); transform: scale(1.03); }
+  body.home #spotify-pill:hover, body.hub #spotify-pill:hover {
+    transform: translateX(-50%) scale(1.03);
+  }
+  /* while the player is up, the pill is the thing it came from — lift it slightly so
+     the morph reads as connected to it */
+  body.sp-open #spotify-pill { border-color: rgba(110,231,183,.7); }
+  body.home.sp-open #spotify-pill, body.hub.sp-open #spotify-pill {
+    transform: translateX(-50%) scale(1.06);
+  }
+  /* the rest of the mirror steps back while the player is open */
+  body.sp-open #clockbox { opacity: .25; }
+  #clockbox { transition: opacity .38s var(--ease); }
+
+  /* ============ SPOTIFY PLAYER WINDOW ============
+     Opened by clicking the pill. Layout, left to right:
+       [ playlist grid ] [ album cover ] [ transport + seek ]
+                                            [ vertical volume ]  <- far right
+     The backdrop blurs and dims the whole mirror behind the window, so the
+     controls are the only thing in focus.
+
+     OPEN/CLOSE MOTION — the window morphs out of the pill it was clicked from and
+     collapses back into it. JS measures the pill's centre and sets --sp-dx/--sp-dy
+     (the offset from the window's centred position); the closed state applies that
+     offset plus a small scale, the open state zeroes it. That is a real spatial cue
+     ("this came from there") instead of a generic centre pop.
+
+     visibility (not display) is what hides it: a display swap cannot be transitioned,
+     and the old code toggled display:none in the same frame as the class, so the
+     open animation frequently did not run at all. */
+  #sp-player-backdrop {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(2,10,5,0);
+    backdrop-filter: blur(0px) saturate(1);
+    -webkit-backdrop-filter: blur(0px) saturate(1);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition:
+      opacity .38s var(--ease),
+      background-color .38s var(--ease),
+      backdrop-filter .38s var(--ease),
+      -webkit-backdrop-filter .38s var(--ease),
+      visibility 0s linear .38s;
+  }
+  #sp-player-backdrop.open {
+    background: rgba(2,10,5,.55);
+    backdrop-filter: blur(14px) saturate(.9);
+    -webkit-backdrop-filter: blur(14px) saturate(.9);
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition:
+      opacity .38s var(--ease),
+      background-color .38s var(--ease),
+      backdrop-filter .38s var(--ease),
+      -webkit-backdrop-filter .38s var(--ease),
+      visibility 0s linear 0s;
+  }
+
+  #sp-player {
+    position: fixed; left: 50%; top: 50%; z-index: 61;
+    /* closed = sitting on the pill, small and clear */
+    transform: translate(calc(-50% + var(--sp-dx, 0px)), calc(-50% + var(--sp-dy, 0px))) scale(.12);
+    width: min(96vw, 1800px); height: min(92vh, 1020px);
+    display: flex; flex-direction: row; gap: 30px;
+    padding: 26px 30px;
+    background: rgba(8,20,13,.92);
+    border: 1px solid rgba(110,231,183,.28);
+    border-radius: 28px;
+    box-shadow: 0 30px 90px rgba(0,0,0,.7);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transform-origin: 50% 50%;
+    transition:
+      opacity .30s var(--ease),
+      transform .46s cubic-bezier(.22,1,.36,1),
+      visibility 0s linear .46s;
+  }
+  #sp-player.open {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition:
+      opacity .30s var(--ease),
+      transform .46s cubic-bezier(.22,1,.36,1),
+      visibility 0s linear 0s;
+  }
+  /* the three columns settle in just behind the window, so it feels assembled rather
+     than snapped into place */
+  #sp-pl-col, #sp-mid-col, #sp-vol-col {
+    opacity: 0; transform: translateY(14px);
+    transition: opacity .34s var(--ease), transform .34s var(--ease);
+  }
+  #sp-player.open #sp-pl-col,
+  #sp-player.open #sp-mid-col,
+  #sp-player.open #sp-vol-col { opacity: 1; transform: none; }
+  #sp-player.open #sp-pl-col  { transition-delay: .14s; }
+  #sp-player.open #sp-mid-col { transition-delay: .20s; }
+  #sp-player.open #sp-vol-col { transition-delay: .26s; }
+
+  /* Respect the OS setting: no morph, just appear. */
+  @media (prefers-reduced-motion: reduce) {
+    #sp-player, #sp-player-backdrop,
+    #sp-pl-col, #sp-mid-col, #sp-vol-col {
+      transition: opacity .12s linear !important;
+      transform: none !important;
+    }
+    #sp-player { transform: translate(-50%, -50%) !important; }
+  }
+
+  /* ---- playlist grid (leftmost) ----
+     A fixed 3x4: twelve of the most-listened playlists, three across and four down.
+     The grid overlays the whole column and centres itself, so the block is centred in
+     the WINDOW top-to-bottom. The cover size is solved so the block always clears the
+     search bar above it, which is why the fit reserves that height on both sides. */
+  #sp-pl-col {
+    flex: 0 0 40%; display: flex; flex-direction: column;
+    position: relative; min-width: 0;
+    padding-top: 40px;      /* keeps the search bar's top edge level with the close button */
+  }
+  #sp-top { display: block; position: relative; z-index: 2; }
+
+  /* search bar, above the playlists */
+  #sp-search-wrap { display: flex; gap: 10px; margin-bottom: 12px; }
+  #sp-search {
+    flex: 1 1 auto; min-width: 0;
+    font-family: inherit; font-size: 1.05rem; color: var(--text);
+    background: rgba(255,255,255,.06); border: 1px solid var(--card-border);
+    border-radius: 12px; padding: 12px 16px; outline: none;
+  }
+  #sp-search::placeholder { color: var(--muted); }
+  #sp-search:focus { border-color: rgba(110,231,183,.55); }
+  #sp-search-clear {
+    flex: 0 0 auto; width: 46px; border-radius: 12px;
+    background: rgba(255,255,255,.06); border: 1px solid var(--card-border);
+    color: var(--muted); font-size: 1.1rem; cursor: pointer;
+  }
+  #sp-search-clear:hover { background: rgba(255,83,112,.2); color: #ff9aae; border-color: rgba(255,83,112,.45); }
+  #sp-search-clear.hidden { display: none; }
+
+  /* search results list — replaces the grid while a query is active */
+  #sp-search-results {
+    display: none; flex-direction: column; gap: 8px;
+    overflow-y: auto; padding: 2px 8px 2px 2px;
+  }
+  #sp-search-results.on { display: flex; }
+  .sp-sr {
+    display: flex; align-items: center; gap: 12px; padding: 8px 10px;
+    background: rgba(255,255,255,.04); border: 1px solid var(--card-border);
+    border-radius: 12px; cursor: pointer; text-align: left; min-width: 0;
+  }
+  .sp-sr:hover, .sp-sr:focus-visible { background: rgba(110,231,183,.14);
+    border-color: rgba(110,231,183,.5); outline: none; }
+  .sp-sr img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex: 0 0 auto; }
+  .sp-sr-txt { min-width: 0; flex: 1 1 auto; }
+  .sp-sr-name { font-size: 1rem; font-weight: 600; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp-sr-artist { font-size: .85rem; color: var(--muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp-sr-dur { font-size: .82rem; color: var(--muted); flex: 0 0 auto;
+    font-variant-numeric: tabular-nums; }
+  .sp-sr-hint { font-size: .85rem; color: var(--muted); padding: 6px 2px; }
+
+  #sp-pl-grid {
+    display: grid;
+    /* overlays the whole column (including the area under the search bar) so its
+       align-content:center centres the 3x4 in the window, not in the leftover space */
+    position: absolute; inset: 0;
+    grid-template-columns: repeat(3, 1fr);   /* the 3 of the 3x4 */
+    grid-template-rows: repeat(4, auto);     /* the 4 of the 3x4 */
+    gap: 12px; padding: 0;
+    align-content: center;
+    overflow: hidden;                        /* the fit is computed: a scrollbar is a bug */
+  }
+  #sp-pl-grid.off { display: none; }
+  /* pinned to the bottom so it cannot steal height from the grid and skew the centre */
+  #sp-pl-status {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    font-size: .85rem; color: var(--muted); padding: 6px 2px 0; min-height: 1.2em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sp-pl-card {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px; padding: 0; min-width: 0;
+    background: none; border: none; text-align: center; cursor: pointer;
+    transition: transform .16s var(--ease);
+  }
+  .sp-pl-card:hover, .sp-pl-card:focus-visible { transform: translateY(-3px); outline: none; }
+  .sp-pl-art {
+    position: relative; width: 100%; max-width: var(--sp-cover, 96px);
+    aspect-ratio: 1 / 1; border-radius: 12px; flex: 0 0 auto;
+    background: rgba(255,255,255,.06); border: 1px solid var(--card-border);
+    overflow: hidden;
+  }
+  .sp-pl-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .sp-pl-art .noart {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 1.6rem; font-weight: 800;
+  }
+  .sp-pl-card:hover .sp-pl-art { border-color: rgba(110,231,183,.6); }
+  .sp-pl-card.now .sp-pl-art { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(110,231,183,.55); }
+  /* one line only — a wrapped name would push the last row out of the fit */
+  .sp-pl-name {
+    font-size: .82rem; font-weight: 600; color: var(--text); line-height: 1.15;
+    max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .sp-pl-card.now .sp-pl-name { color: var(--accent); }
+  /* track count lives in the card's tooltip rather than under the name */
+  .sp-pl-count { display: none; }
+
+  /* ---- album cover, track info, seek, transport (middle) ---- */
+  #sp-mid-col {
+    flex: 1 1 auto; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; gap: 18px; min-width: 0;
+  }
+  /* album cover sits ABOVE the track text */
+  #sp-big-art {
+    width: min(30vh, 290px); height: min(30vh, 290px); border-radius: 16px;
+    object-fit: cover; display: block; flex: 0 0 auto;
+    background: rgba(255,255,255,.05); border: 1px solid var(--card-border);
+    box-shadow: 0 18px 50px rgba(0,0,0,.55);
+  }
+  #sp-big-art.hidden { display: none; }
+  #sp-track { min-width: 0; width: 100%; text-align: center; }
+  #sp-track-name {
+    font-size: 2rem; font-weight: 700; letter-spacing: .5px; line-height: 1.2;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #sp-track-artist { font-size: 1.25rem; color: var(--accent); margin-top: 4px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #sp-track-album { font-size: 1rem; color: var(--muted); margin-top: 2px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* horizontal seek bar */
+  #sp-seek-wrap { display: flex; align-items: center; gap: 16px; }
+  .sp-time { font-size: 1rem; color: var(--muted); font-variant-numeric: tabular-nums;
+    flex: 0 0 58px; text-align: center; }
+  #sp-seek {
+    flex: 1 1 auto; -webkit-appearance: none; appearance: none;
+    height: 12px; border-radius: 6px; background: rgba(255,255,255,.14);
+    outline: none; cursor: pointer;
+  }
+  #sp-seek::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 26px; height: 26px;
+    border-radius: 50%; background: var(--accent); border: none; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,.6);
+  }
+  #sp-seek::-moz-range-thumb {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--accent);
+    border: none; cursor: pointer;
+  }
+  #sp-seek:disabled { opacity: .4; cursor: default; }
+
+  /* transport row: prev / play / next, with skip-back called out */
+  #sp-transport { display: flex; align-items: center; justify-content: center; gap: 26px; }
+  .sp-tbtn {
+    display: flex; align-items: center; justify-content: center;
+    width: 74px; height: 74px; border-radius: 50%;
+    background: rgba(110,231,183,.16); border: 1px solid rgba(110,231,183,.42);
+    color: var(--accent); cursor: pointer;
+    transition: background .16s var(--ease), transform .16s var(--ease);
+  }
+  .sp-tbtn:hover { background: rgba(110,231,183,.34); transform: scale(1.05); }
+  .sp-tbtn:active { transform: scale(.97); }
+  .sp-tbtn.big {
+    width: 100px; height: 100px; background: rgba(110,231,183,.32);
+    border-color: rgba(110,231,183,.7);
+  }
+  .sp-tbtn.big:hover { background: rgba(110,231,183,.5); }
+  .sp-tbtn svg { display: block; }
+
+  /* ---- vertical volume (far right) ---- */
+  #sp-vol-col {
+    flex: 0 0 auto; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    padding-left: 24px;
+  }
+  #sp-vol-val { font-size: 1.05rem; font-weight: 700; color: var(--accent);
+    font-variant-numeric: tabular-nums; }
+  #sp-vol-ico { color: var(--muted); display: flex; }
+  #sp-vol-ico.muted { opacity: .4; }
+  #sp-vol {
+    -webkit-appearance: none; appearance: none; cursor: pointer;
+    /* a horizontal range rotated upright: the browser handles the thumb maths */
+    writing-mode: vertical-lr; direction: rtl;
+    width: 24px; height: min(46vh, 420px);
+    border-radius: 12px; background: rgba(255,255,255,.14); outline: none;
+  }
+  #sp-vol::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 34px; height: 34px;
+    border-radius: 50%; background: var(--accent); border: none; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,.6);
+  }
+  #sp-vol::-moz-range-thumb {
+    width: 34px; height: 34px; border-radius: 50%; background: var(--accent);
+    border: none; cursor: pointer;
+  }
+  #sp-vol:disabled { opacity: .35; cursor: default; }
+
+  /* ---- close + open-in-Spotify ---- */
+  /* both live in the window's top-right corner: the Spotify hand-over next to the
+     close button, small and out of the content's way */
+  #sp-close {
+    position: absolute; right: 20px; top: 18px;
+    width: 48px; height: 48px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.07); border: 1px solid var(--card-border);
+    color: var(--muted); font-size: 1.4rem; line-height: 1; cursor: pointer;
+  }
+  #sp-close:hover { background: rgba(255,83,112,.22); color: #ff9aae;
+    border-color: rgba(255,83,112,.5); }
+
+  /* "go to Spotify": hands the current playlist to the machine's Spotify app and
+     resumes it there, at the position it was paused at. */
+  #sp-goto {
+    position: absolute; right: 80px; top: 18px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    height: 48px; padding: 0 16px; border-radius: 24px;
+    background: rgba(30,215,96,.18); border: 1px solid rgba(30,215,96,.55);
+    color: #7ff0b8; font-size: .9rem; font-weight: 700; letter-spacing: .3px;
+    cursor: pointer; white-space: nowrap;
+    transition: background .16s var(--ease), transform .16s var(--ease);
+  }
+  #sp-goto:hover { background: rgba(30,215,96,.32); transform: translateY(-2px); }
+  #sp-goto:active { transform: translateY(0); }
+  #sp-goto:disabled { opacity: .45; cursor: default; transform: none; }
+  #sp-goto svg { flex: 0 0 auto; width: 18px; height: 18px; }
+  /* the hand-over status line sits with the button, top-right */
+  #sp-goto-hint {
+    position: absolute; right: 80px; top: 70px;
+    font-size: .78rem; color: var(--muted); text-align: right; max-width: 260px;
+  }
+
+  #sp-player-err {
+    position: absolute; left: 34px; bottom: 12px; font-size: .85rem;
+    color: #fca5a5; max-width: 60%;
+  }
+
+  /* ============ HOME ============
+     Geometry comes from the shared HUB rule further down, so home, apps, life, work
+     and referee all sit in the same place — only the ring contents change. Home just
+     gets a larger orb. */
+
+  /* when voice chat is ON: orb shrinks and tucks to the left, whole orb visible */
+
+  /* ============ HOME voice-chat transcript panel ============ */
+  #vc-panel {
+    position: fixed; display: none; flex-direction: column;
+    right: 4vw; top: 24vh; bottom: 24vh; width: 58vw; max-width: 720px;
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,.4);
+    overflow: hidden; opacity: 0; transform: translateY(14px);
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+  }
+  body.home.vc-open #vc-panel { display: flex; opacity: 1; transform: none; }
+  body.vc-open #vc-panel { display: flex; opacity: 1; transform: none; }
+  #vc-head { display: flex; align-items: center; gap: 12px; padding: 14px 20px;
+    border-bottom: 1px solid var(--card-border); font-weight: 700; letter-spacing: 1px; font-size: 1rem; }
+  #vc-ind { width: 12px; height: 12px; border-radius: 50%; background: var(--orb-color); flex: 0 0 auto; }
+  #vc-ind.listening { background: #3b82f6; }
+  #vc-ind.thinking { background: #f59e0b; }
+  #vc-ind.error { background: #ef4444; }
+  #vc-state { color: var(--muted); font-weight: 500; letter-spacing: 2px; font-size: .8rem; }
+  #vc-scroll { flex: 1 1 auto; overflow-y: auto; padding: 16px 20px; display: flex;
+    flex-direction: column; gap: 10px; }
+  #vc-scroll .chat-msg.you { align-self: flex-end; border-bottom-right-radius: 4px;
+    background: rgba(110,231,183,.22); border: 1px solid rgba(110,231,183,.4); }
+  #vc-scroll .chat-msg.bot { align-self: flex-start; border-bottom-left-radius: 4px;
+    background: rgba(255,255,255,.05); border: 1px solid var(--card-border); }
+  #vc-scroll .chat-msg.err { align-self: flex-start; background: rgba(239,68,68,.12);
+    border: 1px solid rgba(239,68,68,.4); color: #fca5a5; }
+  #vc-hint { color: var(--muted); font-size: .95rem; padding: 0 20px 16px; }
+  /* type-instead-of-talk bar, so the panel is usable in a quiet room */
+  #vc-inputbar { display: flex; gap: 10px; padding: 10px 16px 0; flex: 0 0 auto; }
+  #vc-input {
+    flex: 1 1 auto; min-width: 0; font-family: inherit; font-size: 1.1rem; color: var(--text);
+    background: rgba(255,255,255,.06); border: 1px solid var(--card-border);
+    border-radius: 12px; padding: 12px 16px; outline: none;
+  }
+  #vc-input::placeholder { color: var(--muted); }
+  #vc-input:focus { border-color: rgba(110,231,183,.55); }
+  #vc-send {
+    flex: 0 0 auto; padding: 0 22px; border-radius: 12px; font-weight: 700; font-size: 1rem;
+    color: var(--accent); background: rgba(110,231,183,.2); border: 1px solid rgba(110,231,183,.45);
+  }
+  #vc-send:hover { background: rgba(110,231,183,.36); }
+  /* on a leaf page the panel takes the right half, everything else dims out of the way */
+  body.vc-open #vc-panel { right: 2vw; top: 16vh; bottom: 16vh; width: 46vw; max-width: 760px; }
+  body.vc-open #clockbox, body.vc-open #spotify-pill { opacity: .18; }
+  body.vc-open #window { opacity: .35; pointer-events: none; }
+  body.vc-open #orb-label { opacity: .3; }
+  /* ============ HUB PAGES (home, apps, templates, life, work, referee) ============
+     ONE shared layout for every hub: clock + agenda up top, music pill under it,
+     the orb parked in the middle of the ring of buttons. Only the ring contents
+     change between hubs, so the screen never jumps when you navigate. */
+  body.hub #clockbox { left: 50%; top: 2.6vh; transform: translateX(-50%); text-align: center; }
+  body.hub #clockbox .t { font-size: 2.3rem; }
+  body.hub #clockbox .d { font-size: 1.05rem; }
+  body.hub #clockbox .a { font-size: 1.25rem; margin-top: 2px; }
+  body.hub #clockbox .at { font-size: .9rem; }
+  body.hub #spotify-pill { left: 50%; top: 15.5vh; transform: translateX(-50%); }
+  /* The orb centre comes from HUB_ORB_TOP_VMIN in the JS and the ring wraps it with the
+     same number, so a button can never drift off the orb. */
+  body.hub #orbwrap {
+    left: 50%; top: 60vh; width: 26vmin; height: 26vmin; transform: translate(-50%, -50%);
+  }
+  body.hub #orb-glow {
+    width: 36vmin; height: 36vmin; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  }
+
+  /* ============ HOME — the main screen (user's spec) ============
+     No ring on home. One BIG orb in the middle, the clock/date above it, the Spotify
+     pill between them, and today's schedule in a wide card under the orb. Everything
+     below is the pre-JS default; layoutHome() in the JS measures the live page and
+     places the pill, orb and card so they can never overlap at any window size. */
+  body.home #app-ring { display: none !important; }
+  body.home #hintbar { display: none !important; }
+  body.home #clockbox { left: 50%; top: 2.2vh; transform: translateX(-50%); text-align: center; }
+  body.home #clockbox .t { font-size: clamp(2.4rem, 5.4vmin, 4.6rem); }
+  body.home #clockbox .d { font-size: clamp(1rem, 1.7vmin, 1.6rem); }
+  body.home #clockbox .a { font-size: clamp(1.05rem, 1.9vmin, 1.85rem); margin-top: 4px; }
+  body.home #clockbox .at { font-size: clamp(.85rem, 1.2vmin, 1.15rem); }
+  body.home #spotify-pill { left: 50%; top: 17vh; transform: translateX(-50%); }
+  body.home #orbwrap { left: 50%; top: 46vh; width: 38vmin; height: 38vmin; transform: translate(-50%, -50%); }
+  body.home #orb-glow { width: 52vmin; height: 52vmin; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  body.home #orb-label { font-size: .95rem; }
+
+  /* Home carries NO schedule card — the agenda line under the clock is the only
+     schedule readout (user's spec: "remove the schedule excluding the one near the
+     time"). The orb therefore gets the whole space below the pill. */
+
+  /* ============ VOICE MODE on a hub (panel open) ============
+     The panel owns the right half, so the ring steps aside, the orb shrinks to the
+     left and everything else fades back instead of fighting the panel. */
+  body.hub.vc-open #app-ring { display: none; }
+  body.hub.vc-open #orbwrap { left: 22vw; top: 50vh; width: 22vmin; height: 22vmin; }
+  body.hub.vc-open #orb-glow { width: 30vmin; height: 30vmin; }
+  body.hub.vc-open #clockbox, body.hub.vc-open #spotify-pill { opacity: .18; }
+
+  /* always-visible hint strip (hub pages only, hidden while the panel is up) */
+  #hintbar {
+    position: fixed; left: 30px; bottom: 22px;
+    display: none; flex-direction: column; align-items: flex-start; gap: 6px;
+    color: var(--muted); font-size: 1rem; letter-spacing: .3px; line-height: 1.5;
+    background: rgba(6,20,12,.72); border: 1px solid var(--card-border);
+    border-radius: 18px; padding: 14px 22px; backdrop-filter: blur(8px);
+    max-width: 30vw;
+  }
+  #hintbar b { color: var(--accent); font-weight: 700; }
+  body.hub #hintbar { display: flex; }
+  body.hub.vc-open #hintbar { display: none; }
+  @media (max-height: 620px) { #hintbar { display: none !important; } }
+  /* ring of buttons around the orb */
+  #app-ring { position: absolute; inset: 0; pointer-events: none; }
+  #app-ring .app-btn {
+    pointer-events: auto; position: absolute; transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; padding: 8px 12px; border-radius: 20%;
+    background: rgba(10,20,14,.86); border: 1px solid var(--card-border); color: var(--accent);
+    font-weight: 700; letter-spacing: .5px; text-align: center; line-height: 1.1;
+    box-shadow: 0 10px 26px rgba(0,0,0,.5); backdrop-filter: blur(6px);
+    transition: background .2s var(--ease), border-color .2s var(--ease), transform .18s var(--ease);
+  }
+  #app-ring .app-btn:hover, #app-ring .app-btn:focus-visible {
+    background: rgba(110,231,183,.26); border-color: rgba(110,231,183,.6);
+    transform: translate(-50%, -50%) scale(1.06); outline: none;
+  }
+  #app-ring .app-btn:active { transform: translate(-50%, -50%) scale(.97); }
+  #app-ring .app-btn-label { font-size: .95rem; letter-spacing: .2px; }
+  #app-ring .app-btn-sub { font-size: .78rem; }
+  #app-ring .app-btn-sub {
+    font-weight: 500; color: var(--muted); letter-spacing: .2px; max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* The ring only belongs to hubs. One rule, so a new hub gets it automatically —
+     no more adding a body.<page> selector to a list every time. */
+  body:not(.hub) #app-ring { display: none; }
+  body.hub #app-ring { display: block; }
+  /* while the voice panel owns the right half, the ring would only collide */
+  body.hub.vc-open #app-ring { display: none; }
+</style>
+</head>
+<body class="home">
+
+  <div id="stage">
+    <div id="clockbox" class="anim">
+      <span class="t" id="c-time">--:--</span>
+      <span class="d" id="c-date">Loading…</span>
+      <span class="a" id="c-agenda"></span>
+      <span class="at" id="c-agenda-time"></span>
+    </div>
+
+    <div id="orbwrap" class="anim">
+      <div id="orb-glow"></div>
+      <canvas id="orb"></canvas>
+      <div id="orb-label">READY</div>
+    </div>
+
+    <div id="vc-panel" class="anim">
+      <div id="vc-head"><span id="vc-ind"></span><span id="vc-title">Padawan</span><span id="vc-state">READY</span></div>
+      <div id="vc-scroll"></div>
+      <div id="vc-inputbar">
+        <input id="vc-input" placeholder="Type or say it" autocomplete="off">
+        <button id="vc-send" title="Send">Send</button>
+      </div>
+      <div id="vc-hint">Space to talk. Escape or the orb to go back.</div>
+    </div>
+
+    <div id="spotify-pill" class="anim">
+      <span id="sp-ico">SP</span>
+      <span id="sp-text">
+        <div id="sp-title">Not connected</div>
+        <div id="sp-artist"></div>
+      </span>
+      <button class="sp-btn" id="sp-prev" title="Previous">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 6h2v12H6zM20 6l-10 6 10 6z"/></svg>
+      </button>
+      <button class="sp-btn play" id="sp-toggle" title="Play/Pause">
+        <svg id="sp-toggle-ico" viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button class="sp-btn" id="sp-next" title="Next">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M16 6h2v12h-2zM4 6l10 6-10 6z"/></svg>
+      </button>
+    </div>
+
+    <!-- Spotify player window. Opened by clicking the pill; the backdrop blurs the
+         mirror behind it. Left to right: playlist grid, album cover, transport +
+         seek, vertical volume. -->
+    <div id="sp-player-backdrop"></div>
+    <div id="sp-player" role="dialog" aria-label="Spotify player">
+      <button id="sp-close" title="Close">&#10005;</button>
+
+      <button id="sp-goto" title="Play this on Spotify">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.6 14.4a.75.75 0 0 1-1.03.25c-2.82-1.72-6.37-2.11-10.56-1.15a.75.75 0 1 1-.34-1.46c4.57-1.05 8.5-.6 11.66 1.33a.75.75 0 0 1 .27 1.03zm1.2-2.86a.94.94 0 0 1-1.29.31c-3.23-1.98-8.15-2.56-11.97-1.4a.94.94 0 1 1-.55-1.8c4.36-1.32 9.77-.67 13.5 1.61a.94.94 0 0 1 .31 1.28zm.1-2.98C14.05 8.26 7.9 8.06 4.9 8.97a1.12 1.12 0 1 1-.65-2.15c3.44-1.04 10.21-.83 14.5 1.72a1.12 1.12 0 0 1-1.15 1.93z"/></svg>
+        Spotify
+      </button>
+      <div id="sp-goto-hint"></div>
+
+      <div id="sp-pl-col">
+        <div id="sp-top">
+          <div id="sp-search-wrap">
+            <input id="sp-search" type="search" placeholder="Search songs" autocomplete="off"
+                   aria-label="Search songs">
+            <button id="sp-search-clear" class="hidden" title="Clear search">&#10005;</button>
+          </div>
+        </div>
+        <div id="sp-pl-grid"></div>
+        <div id="sp-search-results"></div>
+        <div id="sp-pl-status"></div>
+      </div>
+
+      <div id="sp-mid-col">
+        <img id="sp-big-art" alt="Album cover" class="hidden">
+
+        <div id="sp-track">
+          <div id="sp-track-name">Nothing playing</div>
+          <div id="sp-track-artist"></div>
+          <div id="sp-track-album"></div>
+        </div>
+
+        <div id="sp-seek-wrap">
+          <span class="sp-time" id="sp-elapsed">0:00</span>
+          <input id="sp-seek" type="range" min="0" max="1000" value="0" step="1"
+                 aria-label="Seek position" disabled>
+          <span class="sp-time" id="sp-remain">0:00</span>
+        </div>
+
+        <div id="sp-transport">
+          <button class="sp-tbtn" id="spp-prev" title="Skip back">
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M6 6h2.5v12H6zM20 6l-10 6 10 6z"/></svg>
+          </button>
+          <button class="sp-tbtn big" id="spp-toggle" title="Play/Pause">
+            <svg id="sp-toggle-big" viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <button class="sp-tbtn" id="spp-next" title="Skip forward">
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M17.5 6H20v12h-2.5zM4 6l10 6-10 6z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="sp-vol-col">
+        <span id="sp-vol-val">--</span>
+        <input id="sp-vol" type="range" min="0" max="100" value="50" step="1"
+               aria-label="Volume" disabled>
+        <span id="sp-vol-ico" title="Volume">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a3.5 3.5 0 0 0-2-3.15v6.3a3.5 3.5 0 0 0 2-3.15z"/></svg>
+        </span>
+      </div>
+
+      <div id="sp-player-err"></div>
+    </div>
+    <div id="app-ring" class="anim"></div>
+
+    <div id="hintbar">
+      <span><b>Space</b> talk to Padawan</span>
+      <span><b>Click the orb</b> or <b>Esc</b> back</span>
+      <span><b>Say "jarvis"</b> to wake it</span>
+    </div>
+  </div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script>
+  // ================= mesh orb (Three.js) =================
+  var orbApi;
+  (function () {
+    var orb = document.getElementById('orb');
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+    camera.position.z = 3.2;
+    var renderer = new THREE.WebGLRenderer({ canvas: orb, alpha: true, antialias: true });
+    var size = Math.min(window.innerWidth, window.innerHeight) * 0.40; // home full-size, centered default
+    renderer.setSize(size, size);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+    var group = new THREE.Group(); scene.add(group);
+    var geometry = new THREE.IcosahedronGeometry(1.15, 2);
+    var sphere = new THREE.Mesh(geometry,
+      new THREE.MeshBasicMaterial({ color: 0x00e676, wireframe: true, transparent: true, opacity: 0.35 }));
+    group.add(sphere);
+    var innerSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95, 1),
+      new THREE.MeshBasicMaterial({ color: 0x00e676, transparent: true, opacity: 0.06 }));
+    group.add(innerSphere);
+
+    var verts = geometry.attributes.position.array;
+    var dotPositions = [];
+    for (var i = 0; i < verts.length; i += 3) {
+      var x = verts[i], y = verts[i+1], z = verts[i+2];
+      var len = Math.sqrt(x*x + y*y + z*z);
+      dotPositions.push(x/len*1.18, y/len*1.18, z/len*1.18);
+    }
+    var dotGeo = new THREE.BufferGeometry();
+    dotGeo.setAttribute('position', new THREE.Float32BufferAttribute(dotPositions, 3));
+    var dots = new THREE.Points(dotGeo,
+      new THREE.PointsMaterial({ color: 0x69f0ae, size: 0.035, transparent: true, opacity: 0.7 }));
+    group.add(dots);
+
+    var particleCount = 60;
+    var particlesGeo = new THREE.BufferGeometry();
+    var positions = new Float32Array(particleCount * 3);
+    var speeds = [];
+    for (var i2 = 0; i2 < particleCount; i2++) {
+      var r = 1.9 + Math.random() * 2.6;
+      var theta = Math.random() * Math.PI * 2;
+      var phi = Math.acos(2 * Math.random() - 1);
+      positions[i2*3]   = r * Math.sin(phi) * Math.cos(theta);
+      positions[i2*3+1] = r * Math.sin(phi) * Math.sin(theta);
+      positions[i2*3+2] = r * Math.cos(phi);
+      speeds.push(0.002 + Math.random() * 0.006);
+    }
+    particlesGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    var particles = new THREE.Points(particlesGeo,
+      new THREE.PointsMaterial({ color: 0x00e676, size: 0.025, transparent: true, opacity: 0.35 }));
+    scene.add(particles);
+
+    var targetRotX = 0, targetRotY = 0;
+    document.addEventListener('mousemove', function (e) {
+      var mx = (e.clientX / window.innerWidth) * 2 - 1;
+      var my = (e.clientY / window.innerHeight) * 2 - 1;
+      targetRotY = mx * 0.25; targetRotX = my * 0.25;
+    });
+
+    var glowEl = document.getElementById('orb-glow');
+    var wrapEl = document.getElementById('orbwrap');
+    var mSphere = sphere.material, mInner = innerSphere.material,
+        mDots = dots.material, mParts = particles.material;
+    function setSize(px) {
+      orb.style.width = px + 'px'; orb.style.height = px + 'px';
+      renderer.setSize(px, px);
+    }
+    // setTop shifts the CENTRE of the orb stage. The CSS keeps the orbwrap centred
+    // in its own box (translate -50%), so changing 'top' here moves the orb together
+    // with its glow and the ring that wraps it.
+    function setTop(px) {
+      if (wrapEl) wrapEl.style.top = Math.round(px) + 'px';
+    }
+    orbApi = {
+      setColor: function (hex) {
+        var c = new THREE.Color(hex);
+        mSphere.color.copy(c); mInner.color.copy(c);
+        mDots.color.copy(c); mParts.color.copy(c);
+        if (glowEl) glowEl.style.background = 'radial-gradient(circle, ' + hex + '59 0%, ' + hex + '1f 40%, transparent 70%)';
+      },
+      setSize: setSize,
+      setTop: setTop
+    };
+
+    function animate() {
+      requestAnimationFrame(animate);
+      sphere.rotation.x += 0.003; sphere.rotation.y += 0.005;
+      innerSphere.rotation.x -= 0.002; innerSphere.rotation.y += 0.003;
+      dots.rotation.x += 0.001; dots.rotation.y += 0.002;
+      group.rotation.x += (targetRotX - group.rotation.x) * 0.05;
+      group.rotation.y += (targetRotY - group.rotation.y) * 0.05;
+      particles.rotation.y += 0.0005;
+      var pos = particlesGeo.attributes.position.array;
+      for (var i3 = 0; i3 < particleCount; i3++) {
+        pos[i3*3+1] += speeds[i3];
+        if (pos[i3*3+1] > 4) pos[i3*3+1] = -4;
+      }
+      particlesGeo.attributes.position.needsUpdate = true;
+      renderer.render(scene, camera);
+    }
+    animate();
+  })();
+
+  // ================= clock + agenda =================
+  function tick() {
+    const d = new Date();
+    document.getElementById('c-time').textContent = d.toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit',hour12:true});
+    document.getElementById('c-date').textContent = d.toLocaleDateString('en-AU', {weekday:'long', day:'numeric', month:'long'});
+  }
+  tick(); setInterval(tick, 1000);
+
+  const A2 = 'http://localhost:2008/api/calendar/events?days=1';
+  async function refreshAgenda() {
+    try {
+      const r = await fetch(A2);
+      const evs = await r.json();
+      const now = new Date();
+      let cur = evs.find(e => { const s = new Date(e.start), f = new Date(e.end); return s <= now && now < f; });
+      if (!cur) cur = evs.find(e => new Date(e.start) > now);
+      let txt, time;
+      if (!cur) { txt = 'All done for today'; time = ''; }
+      else {
+        txt = (cur.summary || '(untitled)').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{23F0}-\u{23FF}\u{2B00}-\u{2BFF}]/gu, '');
+        const time12 = (ts) => {
+          if (!ts) return '';
+          const h = parseInt(ts.slice(11,13),10) || 12;
+          return (h % 12 || 12) + ':' + ts.slice(14,16) + (h < 12 ? 'am' : 'pm');
+        };
+        time = (cur.start ? time12(cur.start) + ' - ' + time12(cur.end || '') : '') + (cur.location ? '  .  ' + cur.location : '');
+      }
+      document.getElementById('c-agenda').textContent = txt;
+      document.getElementById('c-agenda-time').textContent = time;
+    } catch (e) { document.getElementById('c-agenda').textContent = 'Agenda unavailable'; }
+  }
+  refreshAgenda(); setInterval(refreshAgenda, 30000);
+
+  // ================= Spotify =================
+  const API = 'http://localhost:2008/api';
+  const SP = 'http://localhost:2008/api/spotify/status';
+  async function refreshSpotify() {
+    try {
+      const r = await fetch(SP);
+      const d = await r.json();
+      const item = d.item;
+      document.getElementById('sp-title').textContent = item && item.name ? item.name : 'Nothing playing';
+      document.getElementById('sp-artist').textContent = item && item.artists ? item.artists.map(a => a.name).join(', ') : '';
+      document.getElementById('sp-toggle-ico').innerHTML = (item && item.is_playing)
+        ? '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>'
+        : '<path d="M8 5v14l11-7z"/>';
+      if (d.needs_auth) document.getElementById('sp-title').textContent = 'Not connected';
+    } catch (e) { document.getElementById('sp-title').textContent = 'Spotify off'; }
+  }
+  refreshSpotify(); setInterval(refreshSpotify, 5000);
+
+  function spAction(name) {
+    fetch(API + '/spotify/' + name.replace('spotify_', ''), { method: 'POST' })
+      .then(() => setTimeout(refreshSpotify, 900));
+  }
+  document.getElementById('sp-prev').addEventListener('click', () => spAction('spotify_prev'));
+  document.getElementById('sp-toggle').addEventListener('click', () => {
+    // toggle = play when paused, pause when playing (client knows current state)
+    const playing = document.getElementById('sp-toggle-ico').innerHTML.indexOf('M6 5h4v14H6zM14 5h4v14h-4z') !== -1;
+    fetch(API + '/spotify/' + (playing ? 'pause' : 'play'), { method: 'POST' })
+      .then(() => setTimeout(refreshSpotify, 900));
+  });
+  document.getElementById('sp-next').addEventListener('click', () => spAction('spotify_next'));
+
+  // ================= Spotify player window =================
+  // Clicking the pill opens a player. Everything here is one window: playlists on the
+  // left, album cover, transport + seek, vertical volume on the far right.
+  //
+  // Polling: while the window is open we poll the player endpoint on a timer that
+  // pauses during a drag, so a slider the user is holding is never yanked back to an
+  // older position mid-gesture.
+  const SPP_PLAYER = 'http://localhost:2008/api/spotify/player';
+  const SPP_PLAYLISTS = 'http://localhost:2008/api/spotify/playlists';
+  const SPP_TOP = 'http://localhost:2008/api/spotify/top-playlists';
+  const SPP_SEARCH = 'http://localhost:2008/api/spotify/search';
+  let spPlayerOpen = false;
+  let spPollTimer = null;
+  let spPlaylistsLoaded = false;
+  let spDragging = false;        // true while the user holds the seek thumb
+  let spDraggingVol = false;     // true while the user holds the volume thumb
+  let spSeeking = false;         // true between a seek POST and its echo coming back
+  let spSearchTimer = null;      // debounce for the song search
+  let spSearchOn = false;        // true while the results list is showing
+  let spNowContext = '';         // the playlist/album currently playing
+  let spNowPos = 0;              // where it was when last polled (for the resume button)
+
+  const el = (id) => document.getElementById(id);
+
+  function fmtTime(ms) {
+    if (!ms || ms < 0) ms = 0;
+    const total = Math.floor(ms / 1000);
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function spErr(msg) {
+    const e = el('sp-player-err');
+    if (e) e.textContent = msg || '';
+  }
+
+  function spSetArt(url) {
+    const img = el('sp-big-art');
+    if (!img) return;
+    if (url) {
+      // Only touch src when it actually changed — reassigning it every poll makes the
+      // image flicker and re-download.
+      if (img.getAttribute('src') !== url) img.src = url;
+      img.classList.remove('hidden');
+    } else {
+      img.classList.add('hidden');
+      img.removeAttribute('src');
+    }
+  }
+
+  function spSetPlayIcon(playing) {
+    const playPath = 'M8 5v14l11-7z';
+    const pausePath = 'M6 5h4v14H6zM14 5h4v14h-4z';
+    const big = el('sp-toggle-big');
+    if (big) big.innerHTML = '<path d="' + (playing ? pausePath : playPath) + '"/>';
+    const ico = el('sp-toggle-ico');
+    if (ico) ico.innerHTML = '<path d="' + (playing ? pausePath : playPath) + '"/>';
+  }
+
+  function applyPlayer(d) {
+    if (!d) return;
+    if (d.needs_auth) {
+      spErr('Spotify needs authorising — run: hermes auth spotify');
+      return;
+    }
+    const item = d.item;
+    const dur = d.duration_ms || 0;
+    const prog = d.progress_ms || 0;
+
+    // remember the duration so the seek handler can convert slider units to ms
+    const seekElDur = el('sp-seek');
+    if (seekElDur) seekElDur.dataset.dur = String(dur);
+
+    if (el('sp-track-name')) el('sp-track-name').textContent = (item && item.name) || 'Nothing playing';
+    if (el('sp-track-artist')) el('sp-track-artist').textContent = (item && item.artists) ? item.artists.join(', ') : '';
+    if (el('sp-track-album')) el('sp-track-album').textContent = (item && item.album) || '';
+    spSetArt(item && item.image);
+    spSetPlayIcon(!!d.playing);
+
+    // seek: the input is 0..1000 so a 3-minute track and a 9-minute track both get
+    // usable resolution; convert to/from ms at the edges.
+    const seek = el('sp-seek');
+    if (seek) {
+      if (dur > 0) {
+        seek.disabled = spDragging || spSeeking;
+        if (!spDragging && !spSeeking) {
+          seek.value = String(Math.round((prog / dur) * 1000));
+        }
+        if (el('sp-elapsed')) el('sp-elapsed').textContent = fmtTime(prog);
+        if (el('sp-remain')) el('sp-remain').textContent = '-' + fmtTime(Math.max(0, dur - prog));
+      } else {
+        seek.disabled = true;
+        seek.value = '0';
+        if (el('sp-elapsed')) el('sp-elapsed').textContent = '0:00';
+        if (el('sp-remain')) el('sp-remain').textContent = '0:00';
+      }
+    }
+
+    // volume
+    const dev = d.device;
+    const vol = el('sp-vol');
+    if (vol) {
+      const supported = !!(dev && dev.supports_volume && dev.volume_percent != null);
+      vol.disabled = !supported || spDraggingVol;
+      const pct = supported ? dev.volume_percent : 0;
+      if (supported && !spDraggingVol) vol.value = String(pct);
+      if (el('sp-vol-val')) el('sp-vol-val').textContent = supported ? (pct + '%') : '--';
+      const ico = el('sp-vol-ico');
+      if (ico) ico.className = (supported && pct > 0) ? '' : 'muted';
+      if (dev && !dev.supports_volume) spErr('This device does not accept volume changes from Spotify.');
+    }
+
+    // mark the playlist that is playing, if the context is one of them
+    if (item) spMarkCurrent();
+
+    // remember the context + position for the "Go to Spotify" button
+    spNowContext = (d.context && d.context.uri) || '';
+    spNowPos = prog;
+    spUpdateGoto();
+  }
+
+  // The "Spotify" button opens the desktop client. It is always usable — handing a
+  // playlist over is a bonus when one is playing, not a requirement for opening the app.
+  //
+  // spGotoSticky holds a result message ("Spotify opened") that the 1s player poll must
+  // not clobber: without it, spUpdateGoto ran on the next tick and wiped the feedback
+  // before it could be read.
+  let spGotoSticky = 0;
+  function spGotoSay(msg, holdMs) {
+    const hint = el('sp-goto-hint');
+    if (!hint) return;
+    hint.textContent = msg;
+    spGotoSticky = Date.now() + (holdMs || 4000);
+  }
+  function spUpdateGoto() {
+    const btn = el('sp-goto');
+    const hint = el('sp-goto-hint');
+    if (!btn) return;
+    btn.disabled = false;
+    if (!hint) return;
+    if (Date.now() < spGotoSticky) return;      // a result message is still showing
+    if (spNowContext.indexOf('spotify:playlist:') === 0) {
+      hint.textContent = '';
+    } else if (spNowContext) {
+      hint.textContent = 'Opens Spotify (playing from an album, so it will not resume).';
+    } else {
+      hint.textContent = 'Opens the Spotify app.';
+    }
+  }
+
+  async function spRefreshPlayer() {
+    if (!spPlayerOpen) return;
+    try {
+      const r = await fetch(SPP_PLAYER);
+      applyPlayer(await r.json());
+      spErr('');
+    } catch (e) {
+      spErr('Cannot reach the Spotify backend on :2008');
+    }
+  }
+
+  function spStartPoll() {
+    if (spPollTimer) return;
+    spPollTimer = setInterval(spRefreshPlayer, 1000);
+  }
+  function spStopPoll() {
+    if (spPollTimer) { clearInterval(spPollTimer); spPollTimer = null; }
+  }
+
+  // ---- playlists: the twelve most listened, in a fixed 3x4 ----
+  async function spLoadPlaylists(force) {
+    if (spPlaylistsLoaded && !force) return;
+    const grid = el('sp-pl-grid');
+    if (!grid) return;
+    if (el('sp-pl-status')) el('sp-pl-status').textContent = 'Loading playlists...';
+    try {
+      const r = await fetch(SPP_TOP);
+      const d = await r.json();
+      const pls = d.playlists || [];
+      if (d.needs_auth) {
+        if (el('sp-pl-status')) el('sp-pl-status').textContent = 'Spotify needs authorising.';
+        return;
+      }
+      spRenderPlaylists(pls);
+      spPlaylistsLoaded = true;
+      if (el('sp-pl-status')) el('sp-pl-status').textContent = '';
+    } catch (e) {
+      if (el('sp-pl-status')) el('sp-pl-status').textContent = 'Could not load playlists from :2008';
+    }
+  }
+
+  function spRenderPlaylists(pls) {
+    const grid = el('sp-pl-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    pls.forEach(function (p) {
+      const card = document.createElement('button');
+      card.className = 'sp-pl-card';
+      card.type = 'button';
+      card.dataset.uri = p.uri || '';
+      card.title = (p.name || '') + (p.tracks ? ' (' + p.tracks + ' tracks)' : '');
+
+      const art = document.createElement('div');
+      art.className = 'sp-pl-art';
+      if (p.image) {
+        const img = document.createElement('img');
+        img.src = p.image;
+        img.alt = '';
+        img.loading = 'lazy';
+        art.appendChild(img);
+      } else {
+        const no = document.createElement('div');
+        no.className = 'noart';
+        no.textContent = (p.name || '?').trim().charAt(0).toUpperCase() || '?';
+        art.appendChild(no);
+      }
+      card.appendChild(art);
+
+      const name = document.createElement('div');
+      name.className = 'sp-pl-name';
+      name.textContent = p.name || '(untitled)';
+      card.appendChild(name);
+
+      const count = document.createElement('div');
+      count.className = 'sp-pl-count';
+      count.textContent = p.tracks ? (p.tracks + ' tracks') : '';
+      card.appendChild(count);
+
+      card.addEventListener('click', function () { spPlayPlaylist(p); });
+      grid.appendChild(card);
+    });
+    spFitGrid(pls.length);
+  }
+
+  // Size the 3x4 so it is centred in the window AND clears the search bar.
+  //
+  // Uses LAYOUT metrics (clientHeight/offsetHeight), never getBoundingClientRect: the
+  // window is scaled during the open/close morph, and a rect would return the scaled
+  // size, so the grid would be fitted against a 12%-scale box.
+  //
+  // The grid overlays the whole column, so `align-content: center` puts the block's
+  // centre on the window's centre. The block must also start below the search bar, so
+  // centring and clearing the bar together impose a ceiling on the block height:
+  //   gridCentre - blockH/2  >=  barBottom + gap
+  // Solve that for the cover size; reserving height asymmetrically (padding) would
+  // move the block's centre off the window's.
+  function spFitGrid(count) {
+    const grid = el('sp-pl-grid');
+    if (!grid || !count) return;
+    if (!grid.clientWidth || !grid.clientHeight) return;
+
+    const COLS = 3, ROWS = 4;
+    const GAP = 12;
+    const NAME_H = 17;          // one line at .82rem
+    const CARD_GAP = 6;         // cover -> name
+
+    const centre = grid.clientHeight / 2;
+    // the search bar's bottom, measured from the grid's top edge (both unscaled)
+    const topEl = el('sp-top');
+    const colPadTop = parseFloat(getComputedStyle(grid.parentElement).paddingTop) || 0;
+    const barBottom = topEl ? (colPadTop + topEl.offsetHeight) : 0;
+    const maxBlockH = Math.max(160, 2 * (centre - barBottom - 12));   // 12px breathing gap
+
+    const usedRows = Math.min(ROWS, Math.ceil(count / COLS));
+    const chrome = usedRows * (NAME_H + CARD_GAP) + (usedRows - 1) * GAP;
+
+    const cellW = (grid.clientWidth - GAP * (COLS - 1)) / COLS;
+    const coverFromH = (maxBlockH - chrome) / usedRows;
+    const cover = Math.max(40, Math.min(cellW, coverFromH));
+
+    grid.style.setProperty('--sp-cover', Math.floor(cover) + 'px');
+  }
+
+  function spMarkCurrent() {
+    // Highlight the playlist card the user last started. The playback payload does not
+    // carry the context URI (kept lean on purpose), so the click is the source of
+    // truth for "which playlist is this" instead of a second Spotify round trip.
+    const grid = el('sp-pl-grid');
+    if (!grid) return;
+    grid.querySelectorAll('.sp-pl-card.now').forEach(function (c) {
+      if (c.dataset.uri !== spNowUri) c.classList.remove('now');
+    });
+    if (spNowUri) {
+      const sel = grid.querySelector('.sp-pl-card[data-uri="' + spNowUri.replace(/"/g, '') + '"]');
+      if (sel) sel.classList.add('now');
+    }
+  }
+  let spNowUri = '';
+
+  async function spPlayPlaylist(p) {
+    if (!p || !p.uri) return;
+    spNowUri = p.uri;
+    spNowContext = p.uri;
+    spMarkCurrent();
+    if (el('sp-pl-status')) el('sp-pl-status').textContent = 'Playing ' + (p.name || '') + '...';
+    try {
+      const r = await fetch(API + '/spotify/playlist', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uri: p.uri }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        if (el('sp-pl-status')) el('sp-pl-status').textContent = 'Playing ' + (p.name || '');
+        setTimeout(spRefreshPlayer, 800);
+      } else {
+        if (el('sp-pl-status')) el('sp-pl-status').textContent = 'Could not play: ' + (d.error || 'unknown');
+      }
+    } catch (e) {
+      if (el('sp-pl-status')) el('sp-pl-status').textContent = 'Backend unreachable on :2008';
+    }
+  }
+
+  // ---- song search ----
+  // Typing swaps the grid for a results list; clearing puts the 3x4 back. The query is
+  // debounced because every keystroke would otherwise be a Spotify round trip.
+  function spSearchMode(on) {
+    spSearchOn = on;
+    const grid = el('sp-pl-grid');
+    const res = el('sp-search-results');
+    const clear = el('sp-search-clear');
+    if (grid) grid.classList.toggle('off', on);
+    if (res) res.classList.toggle('on', on);
+    if (clear) clear.classList.toggle('hidden', !on);
+    if (!on) {
+      // going back to the grid: wipe results and re-fit
+      if (res) res.innerHTML = '';
+      spFitGrid(document.querySelectorAll('.sp-pl-card').length);
+    }
+  }
+
+  function spRenderSearch(tracks, query) {
+    const res = el('sp-search-results');
+    if (!res) return;
+    res.innerHTML = '';
+    if (!tracks.length) {
+      const h = document.createElement('div');
+      h.className = 'sp-sr-hint';
+      h.textContent = 'No songs found for "' + query + '"';
+      res.appendChild(h);
+      return;
+    }
+    tracks.forEach(function (t) {
+      const row = document.createElement('button');
+      row.className = 'sp-sr';
+      row.type = 'button';
+      row.title = t.name + ' — ' + (t.artists || []).join(', ');
+
+      if (t.image) {
+        const img = document.createElement('img');
+        img.src = t.image;
+        img.alt = '';
+        img.loading = 'lazy';
+        row.appendChild(img);
+      }
+      const txt = document.createElement('div');
+      txt.className = 'sp-sr-txt';
+      const nm = document.createElement('div');
+      nm.className = 'sp-sr-name';
+      nm.textContent = t.name || '';
+      const ar = document.createElement('div');
+      ar.className = 'sp-sr-artist';
+      ar.textContent = (t.artists || []).join(', ');
+      txt.appendChild(nm); txt.appendChild(ar);
+      row.appendChild(txt);
+
+      const dur = document.createElement('span');
+      dur.className = 'sp-sr-dur';
+      dur.textContent = fmtTime(t.duration_ms);
+      row.appendChild(dur);
+
+      row.addEventListener('click', function () { spPlayTrack(t); });
+      res.appendChild(row);
+    });
+  }
+
+  async function spDoSearch(q) {
+    const query = (q || '').trim();
+    if (!query) { spSearchMode(false); return; }
+    spSearchMode(true);
+    const res = el('sp-search-results');
+    if (res) res.innerHTML = '<div class="sp-sr-hint">Searching...</div>';
+    try {
+      const r = await fetch(SPP_SEARCH + '?q=' + encodeURIComponent(query));
+      const d = await r.json();
+      if (d.needs_auth) {
+        if (res) res.innerHTML = '<div class="sp-sr-hint">Spotify needs authorising.</div>';
+        return;
+      }
+      spRenderSearch(d.tracks || [], query);
+    } catch (e) {
+      if (res) res.innerHTML = '<div class="sp-sr-hint">Search failed — backend unreachable.</div>';
+    }
+  }
+
+  async function spPlayTrack(t) {
+    if (!t || !t.uri) return;
+    spNowUri = '';            // a single track is not one of the playlist cards
+    spNowContext = '';
+    spMarkCurrent();
+    try {
+      const r = await fetch(API + '/spotify/track', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uri: t.uri }),
+      });
+      const d = await r.json();
+      if (!d.ok) console.warn('play track failed:', d.error);
+      setTimeout(spRefreshPlayer, 800);
+    } catch (e) { /* poll will surface it */ }
+  }
+
+  const searchEl = el('sp-search');
+  if (searchEl) {
+    searchEl.addEventListener('input', function () {
+      const q = searchEl.value;
+      if (spSearchTimer) clearTimeout(spSearchTimer);
+      if (!q.trim()) { spSearchMode(false); return; }
+      spSearchTimer = setTimeout(function () { spDoSearch(q); }, 280);
+    });
+    searchEl.addEventListener('keydown', function (e) {
+      // Escape clears the field first, so it does not also close the whole window
+      if (e.key === 'Escape' && searchEl.value) {
+        e.stopPropagation();
+        searchEl.value = '';
+        spSearchMode(false);
+      }
+    });
+  }
+  if (el('sp-search-clear')) {
+    el('sp-search-clear').addEventListener('click', function () {
+      if (searchEl) searchEl.value = '';
+      spSearchMode(false);
+      if (searchEl) searchEl.focus();
+    });
+  }
+
+  // ---- go to Spotify ----
+  // Brings the DESKTOP Spotify client to the front. Two jobs, in order: hand the current
+  // playlist over (so the app becomes the active device and picks up where the mirror
+  // left off), then launch/raise the app itself via :2008.
+  if (el('sp-goto')) {
+    el('sp-goto').addEventListener('click', async function () {
+      spGotoSay('Opening Spotify...', 8000);
+
+      // 1. hand playback over, if there is a playlist to resume
+      let handed = false;
+      if (spNowContext.indexOf('spotify:playlist:') === 0) {
+        try {
+          const r = await fetch(API + '/spotify/resume', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ context_uri: spNowContext, position_ms: spNowPos }),
+          });
+          const d = await r.json();
+          handed = !!d.ok;
+        } catch (e) { /* fall through to just opening the app */ }
+      }
+
+      // 2. launch / raise the desktop app
+      try {
+        const r = await fetch(API + '/spotify/open-app', { method: 'POST' });
+        const d = await r.json();
+        if (d.ok) {
+          spGotoSay(handed ? 'Playing in Spotify.' : 'Spotify opened.');
+        } else {
+          spGotoSay('Could not open Spotify: ' + (d.error || 'unknown'));
+        }
+      } catch (e) {
+        spGotoSay('Backend unreachable on :2008');
+      }
+      setTimeout(spRefreshPlayer, 1200);
+    });
+  }
+
+  // ---- open / close ----
+  // Point the window's closed state at the pill: --sp-dx/--sp-dy are the offset from
+  // the window's centred position to the pill's centre, so the open animation reads as
+  // the pill unfolding rather than a box appearing in the middle.
+  //
+  // Both sides are measured from LAYOUT metrics, not getBoundingClientRect: the window
+  // is mid-morph (scaled to ~0.12) when this runs, and a rect would compare a
+  // 216px-wide scaled box against the pill — which produced a nonsense dy of -2846px.
+  // The window's centre is always the viewport centre plus its (constant) centring
+  // offset; the scale does not move it.
+  function spAimMorph() {
+    const win = el('sp-player');
+    const pill = document.getElementById('spotify-pill');
+    if (!win || !pill) return;
+    const pr = pill.getBoundingClientRect();
+    const winCx = window.innerWidth / 2;
+    const winCy = window.innerHeight / 2;
+    const pillCx = pr.left + pr.width / 2;
+    const pillCy = pr.top + pr.height / 2;
+    win.style.setProperty('--sp-dx', Math.round(pillCx - winCx) + 'px');
+    win.style.setProperty('--sp-dy', Math.round(pillCy - winCy) + 'px');
+  }
+
+  function spOpenPlayer() {
+    if (spPlayerOpen) return;
+    spPlayerOpen = true;
+    const bd = el('sp-player-backdrop');
+    const win = el('sp-player');
+
+    // Aim the closed state at the pill BEFORE anything else moves, then force a reflow
+    // so the browser commits that as the transition's start value. Order matters twice
+    // over: measuring after `body.sp-open` lands would read the pill already scaled up
+    // by its lift, and without the reflow the class change and the start value land in
+    // one style recalculation and the morph is skipped entirely ("opens instantly").
+    if (win) {
+      win.classList.remove('open');
+      spAimMorph();
+      void win.offsetWidth;
+    }
+
+    document.body.classList.add('sp-open');
+    if (win) win.classList.add('open');
+    if (bd) bd.classList.add('open');
+
+    spErr('');
+    spRefreshPlayer();
+    // fit the grid once the open transition has finished, so the box is at full scale
+    if (spPlaylistsLoaded) {
+      setTimeout(function () {
+        spFitGrid(document.querySelectorAll('.sp-pl-card').length);
+      }, 480);
+    } else {
+      spLoadPlaylists(false);
+    }
+    spStartPoll();
+  }
+
+  function spClosePlayer() {
+    if (!spPlayerOpen) return;
+    spPlayerOpen = false;
+    document.body.classList.remove('sp-open');
+    const bd = el('sp-player-backdrop');
+    const win = el('sp-player');
+    // re-aim before removing the lift, for the same reason as the open path
+    if (win) spAimMorph();
+    if (bd) bd.classList.remove('open');
+    if (win) win.classList.remove('open');
+    spStopPoll();
+  }
+
+  // clicking the pill (but not its transport buttons) opens the window
+  const pill = document.getElementById('spotify-pill');
+  if (pill) {
+    pill.addEventListener('click', function (ev) {
+      // the three transport buttons keep their own behaviour
+      if (ev.target.closest && ev.target.closest('.sp-btn')) return;
+      spOpenPlayer();
+    });
+  }
+  // keep the grid fitted when the window is resized while open
+  window.addEventListener('resize', function () {
+    if (spPlayerOpen && spPlaylistsLoaded) {
+      requestAnimationFrame(function () {
+        spFitGrid(document.querySelectorAll('.sp-pl-card').length);
+      });
+    }
+  });
+  if (el('sp-close')) el('sp-close').addEventListener('click', spClosePlayer);
+  // clicking the blurred area closes it too
+  if (el('sp-player-backdrop')) el('sp-player-backdrop').addEventListener('click', spClosePlayer);
+  // clicks inside the window must not bubble to the backdrop
+  if (el('sp-player')) el('sp-player').addEventListener('click', function (ev) { ev.stopPropagation(); });
+
+  // ---- seek ----
+  const seekEl = el('sp-seek');
+  if (seekEl) {
+    seekEl.addEventListener('input', function () {
+      spDragging = true;
+      const v = Number(seekEl.value);
+      const dur = Number(seekEl.dataset.dur) || 0;
+      if (dur > 0) {
+        const ms = (v / 1000) * dur;
+        if (el('sp-elapsed')) el('sp-elapsed').textContent = fmtTime(ms);
+        if (el('sp-remain')) el('sp-remain').textContent = '-' + fmtTime(Math.max(0, dur - ms));
+      }
+    });
+    seekEl.addEventListener('change', async function () {
+      const v = Number(seekEl.value);
+      const dur = Number(seekEl.dataset.dur) || 0;
+      spDragging = false;
+      if (!dur) return;
+      const ms = Math.round((v / 1000) * dur);
+      spSeeking = true;                       // hold the thumb until the echo lands
+      try {
+        await fetch(API + '/spotify/seek', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ position_ms: ms }),
+        });
+      } catch (e) { spErr('Seek failed'); }
+      // give Spotify a moment to report the new position, then resume following it
+      setTimeout(function () { spSeeking = false; spRefreshPlayer(); }, 700);
+    });
+  }
+
+  // ---- volume ----
+  const volEl = el('sp-vol');
+  if (volEl) {
+    let volSend = null;
+    volEl.addEventListener('input', function () {
+      spDraggingVol = true;
+      if (el('sp-vol-val')) el('sp-vol-val').textContent = volEl.value + '%';
+      // Debounce: dragging fires many input events and each one is a Spotify call.
+      if (volSend) clearTimeout(volSend);
+      const target = Number(volEl.value);
+      volSend = setTimeout(async function () {
+        try {
+          await fetch(API + '/spotify/volume', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ volume_percent: target }),
+          });
+        } catch (e) { spErr('Volume change failed'); }
+      }, 120);
+    });
+    volEl.addEventListener('change', function () {
+      spDraggingVol = false;
+      if (volSend) clearTimeout(volSend);
+      const target = Number(volEl.value);
+      fetch(API + '/spotify/volume', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ volume_percent: target }),
+      }).then(() => setTimeout(spRefreshPlayer, 400)).catch(() => {});
+    });
+  }
+
+  // ---- window transport ----
+  if (el('spp-prev')) el('spp-prev').addEventListener('click', function () {
+    fetch(API + '/spotify/prev', { method: 'POST' }).then(() => setTimeout(spRefreshPlayer, 700));
+  });
+  if (el('spp-next')) el('spp-next').addEventListener('click', function () {
+    fetch(API + '/spotify/next', { method: 'POST' }).then(() => setTimeout(spRefreshPlayer, 700));
+  });
+  if (el('spp-toggle')) el('spp-toggle').addEventListener('click', function () {
+    const pausePath = 'M6 5h4v14H6zM14 5h4v14h-4z';
+    const big = el('sp-toggle-big');
+    const playing = big && big.innerHTML.indexOf(pausePath) !== -1;
+    fetch(API + '/spotify/' + (playing ? 'pause' : 'play'), { method: 'POST' })
+      .then(() => setTimeout(spRefreshPlayer, 700));
+  });
+
+  // ================= layout switching (router) =================
+  // Orb state colours — also drives the dot in the voice panel header.
+  const COLORS = { idle: '#00e676', listening: '#3b82f6', thinking: '#f59e0b', error: '#ef4444' };
+  const LABELS = { idle: 'READY', listening: 'LISTENING', thinking: 'THINKING', error: 'ERROR' };
+  function orbState(s) {
+    const color = COLORS[s] || COLORS.idle;
+    if (orbApi) orbApi.setColor(color);
+    const ol = document.getElementById('orb-label');
+    if (ol) ol.textContent = LABELS[s] || 'READY';
+    const ind = document.getElementById('vc-ind');
+    const st = document.getElementById('vc-state');
+    if (ind) ind.className = s || '';
+    if (st) st.textContent = LABELS[s] || 'READY';
+  }
+
+  // A page is one entry here: which layout it shows, its aliases, its title, which
+  // content block to reveal, and what to load when it opens. There is no second
+  // place to edit — the ring, the orb, the voice backend and the parent map are all
+  // derived from / checked against this table.
+  //
+  // HOME ONLY. The rebuild site starts from the home screen and nothing else; every
+  // other page was stripped out and will be added back one at a time. Keep this table
+  // honest — a page missing here does not exist as far as the router, the ring, the
+  // parent map and the voice backend are concerned.
+  //
+  //   mode: 'hub'  = orb + ring, no window (the ring contents come from RINGS)
+  //         'leaf' = full window, orb parked small in the top-right corner
+  const PAGE_LIST = [
+    // layout        title            mode    body            loader
+    { id: 'home',              title: '',             mode: 'hub'  },
+  ];
+  // Aliases: anything the voice model, a link or muscle memory might say. Every one
+  // has to land on a page that still exists — home is the only destination now.
+  const PAGE_ALIAS = {
+    main: 'home', dashboard: 'home', 'main menu': 'home', menu: 'home', clock: 'home',
+    start: 'home', home: 'home',
+  };
+  // Orb size per mode, in vmin. On a hub the size is per-hub so the home screen reads
+  // as the main screen and the deeper hubs stay compact; the CSS block above carries
+  // the matching hub size (26vmin) as the pre-JS value.
+  const ORB_VMIN = { hub: 0.26, leaf: 0.13, home: 0.29 };
+  const PAGE_ORB = { home: ORB_VMIN.home };
+  const HUB_ORB_TOP_VMIN = 0.60;   // orb centre, as a fraction of viewport height
+  const HUB_ORB_TOP_LEAF = 0.14;   // leaf pages park the orb in the top-right corner
+
+  const PAGE = {};
+  PAGE_LIST.forEach(function (p) { PAGE[p.id] = p; });
+
+  // The body class carries the layout plus flags ('hub', 'vc-open'), so never treat
+  // the whole className as a layout id — always resolve token by token.
+  function canonicalLayout(layout) {
+    var k = String(layout == null ? '' : layout).trim().toLowerCase().split(/\s+/)[0] || '';
+    if (PAGE[k]) return k;
+    if (PAGE_ALIAS[k]) return PAGE_ALIAS[k];
+    return 'home';
+  }
+  function orbVmin(layout) {
+    return (PAGE_ORB && PAGE_ORB[layout]) || (PAGE[layout] && PAGE[layout].mode === 'leaf' ? ORB_VMIN.leaf : ORB_VMIN.hub);
+  }
+  function currentLayout() {
+    var toks = String(document.body.className || '').split(/\s+/);
+    for (var i = 0; i < toks.length; i++) if (PAGE[toks[i]]) return toks[i];
+    return 'home';
+  }
+  function isHub() { return PAGE[currentLayout()].mode === 'hub'; }
+
+  function orbTopPx(layout) {
+    // home places the orb from the measured page (see layoutHome); leaf pages anchor it
+    // to the top edge; every other hub centres it in the ring
+    if (layout === 'home') {
+      const g = (typeof homeGeom === 'function') ? homeGeom() : null;
+      if (g) return g.orbCy;
+    }
+    return (PAGE[layout] && PAGE[layout].mode === 'leaf')
+      ? Math.min(window.innerWidth, window.innerHeight) * HUB_ORB_TOP_LEAF
+      : window.innerHeight * HUB_ORB_TOP_VMIN;
+  }
+
+  // Content blocks that showLayout reveals one at a time. Empty while the site is
+  // home-only — home has no window block at all, so nothing is ever revealed. Add a
+  // page, add its body id here.
+  var CONTENT_IDS = [];
+
+  function showLayout(layout) {
+    layout = canonicalLayout(layout);
+    const page = PAGE[layout];
+    const current = currentLayout();
+
+    // Body class: the layout id plus, on hubs, the `hub` flag the CSS keys off.
+    document.body.className = layout + (page.mode === 'hub' ? ' hub' : ' leaf');
+    if (layout !== current) document.body.dataset.prevLayout = current;
+    if (layout !== 'home') closeVoicePanel();
+    if (orbApi) orbApi.setSize(Math.min(window.innerWidth, window.innerHeight) * orbVmin(layout));
+    orbApi && orbApi.setTop && orbApi.setTop(orbTopPx(layout));
+    if (page.mode === 'hub') { voicePanelOpen = false; document.body.classList.remove('vc-open'); }
+    // home lays itself out from the live page (big orb, pill and agenda, no ring)
+    if (layout === 'home') { try { layoutHome(); } catch (e) { console.error('home layout', e); } }
+
+    // Reveal exactly one content block (or none, on a hub). No page has a window block
+    // yet, so this loop is a no-op — it is the hook every rebuilt page plugs into: add
+    // the page's body id to CONTENT_IDS and give its PAGE_LIST row a `body`.
+    CONTENT_IDS.forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) { el.style.display = 'none'; el.style.flexDirection = ''; }
+    });
+    if (page.body) {
+      const el = document.getElementById(page.body);
+      if (el) el.style.display = 'flex';
+    }
+
+    renderAppRing();
+    if (page.load && typeof window[page.load] === 'function') {
+      try { window[page.load](); } catch (e) { console.error('load ' + page.load, e); }
+    }
+  }
+
+  // ================= navigation =================
+  // The orb is the up button. Navigation is a FIXED PARENT MAP (user's explicit
+  // preference): leaf -> its hub -> apps -> home. Never a back-stack.
+  // Home is the only page, so every "up" lands back on home — the orb and Escape both
+  // route through here. As pages come back, restore their real parent.
+  const PARENT = {
+    home: 'home',
+  };
+
+  // The orb does one of three things, in this order of priority:
+  //   1. panel is up  -> close it (and go back to full-size on the hub)
+  //   2. on an app    -> up to its parent hub
+  //   3. somewhere else -> home
+  function orbUp() {
+    const cur = currentLayout();
+    if (voicePanelOpen) { closeVoicePanel(); return; }
+    showLayout(PARENT[cur] || 'home');
+  }
+  document.getElementById('orb').addEventListener('click', orbUp);
+
+  // Escape always means "back", from anywhere, including inside a text box.
+  // The Spotify player is the innermost layer, so it closes first.
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !e.repeat) {
+      const t = e.target;
+      const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA');
+      if (spPlayerOpen) { spClosePlayer(); return; }
+      if (typing && t.value) return;   // let a field's own Escape handler win
+      orbUp();
+    }
+  });
+
+  // Keep the ring wrapped around the orb through resizes and orientation changes.
+  function relayout() {
+    const cur = currentLayout();
+    if (orbApi) {
+      orbApi.setSize(Math.min(window.innerWidth, window.innerHeight) * orbVmin(cur));
+      orbApi.setTop(orbTopPx(cur));
+    }
+    if (cur === 'home') layoutHome();
+    renderAppRing();
+  }
+  window.addEventListener('resize', relayout);
+  window.addEventListener('orientationchange', relayout);
+  // ================= apps ring =================
+  // The ring of buttons around the orb. It wraps the orb (same centre, same maths)
+  // so nothing ever drifts, buttons size themselves to fit the ring, and every
+  // button shows a one-line live status pulled from the page it opens — so the home
+  // screen tells you something instead of being ten identical pills.
+
+  // Label per button. Kept as a lookup because several pages read better in caps or
+  // with a space (KANBAN -> TO DO). Rebuilt pages add their own line back here.
+  function ringLabel(p) {
+    return p.toUpperCase();
+  }
+  function ringStatus(p) {
+    const s = RING_STATUS[p];
+    return s ? String(s) : '';
+  }
+
+  // Hub -> the buttons that live on it. Everything downstream (orb up-button,
+  // voice navigation, parent map) is derived from this one structure.
+  // Six buttons is the most a hub ring can hold and stay readable on the mirror's
+  // screen, so anything past six lives in a hub.
+  // Home is ring-less by design, and it is the only page — so this table starts empty
+  // and each rebuilt page adds itself back to its hub's row.
+  const RINGS = {
+    home:      [],      // home has NO ring — big orb + clock + Spotify + today's agenda
+  };
+
+  function ringButtons(cls) {
+    const ids = RINGS[cls] || RINGS.home;
+    return ids.map(id => ({ id: id, label: ringLabel(id), fn: () => showLayout(id) }));
+  }
+
+  // Ring geometry — solved against the live page so a button can never end up
+  // off-screen, on top of the clock, or on top of the orb. The band between the
+  // clock/agenda and the bottom of the screen is measured, the button size is derived
+  // from it, and the ring radius is then the largest value satisfying three
+  // constraints at once: vertical room in the band, horizontal room to the screen
+  // edge, and arc room so neighbours do not touch. If no radius works, the buttons
+  // shrink and the orb shrinks with them.
+  function hubBand() {
+    const vh = window.innerHeight;
+    let top = 0;
+    ['clockbox', 'spotify-pill'].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      if (r.height) top = Math.max(top, r.bottom);
+    });
+    return { top: (top || vh * 0.22) + 12, bottom: vh - 18 };
+  }
+
+  // For a given button size, the ring radius must be no larger than the room left by
+  // the band and the screen edges, and no smaller than what the arc per button and the
+  // orb need. rMax falls as the button grows; rArc rises. So there is one crossing
+  // point: binary-search it. The orb is then whatever fits inside the ring.
+  // Solve the ring against the live page. For a given button size there is exactly one
+  // sensible radius: the largest that keeps the top and bottom buttons inside the free
+  // band and the side buttons on screen. As the button grows that radius shrinks while
+  // the radius the buttons and orb need grows, so "does this size fit?" is monotone —
+  // binary-search the largest size that fits, then place the ring at that radius.
+  function ringFits(size, ctx) {
+    const rVert = ctx.bandH / 2 - size / 2 - ctx.pad;
+    const rHoriz = ctx.vw / 2 - size / 2 - 14;
+    const r = Math.min(rVert, rHoriz);
+    const need = Math.max((size * Math.SQRT2) / (2 * Math.sin(Math.PI / ctx.n)),  // neighbours keep clear
+                          ctx.orb / 2 + size / 2 + 18);                          // orb stays inside
+    return r >= need ? r : null;
+  }
+
+  function solveRing(n, band) {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const vmin = Math.min(vw, vh);
+    const bandH = Math.max(band.bottom - band.top, vmin * 0.34);
+    const cy = (band.top + band.bottom) / 2;
+    const pad = 10;
+    const density = n <= 2 ? 2.3 : n <= 4 ? 2.6 : 3.0;
+    const ideal = Math.min(vmin * 0.23, bandH * 0.40, (vw * 0.94) / density);
+
+    // the orb gives way first if it would force unusably small buttons
+    let orb = Math.min(vmin * orbVmin(currentLayout()), vmin * 0.26);
+    const orbCap = 2 * (bandH / 2 - pad - 46 / 2 - 18);
+    if (orb > orbCap) orb = Math.max(vmin * 0.09, orbCap);
+
+    const ctx = { n: n, vw: vw, bandH: bandH, pad: pad, orb: orb };
+    let lo = 44, hi = Math.max(ideal, 46);
+    if (ringFits(hi, ctx)) { lo = hi; }
+    else {
+      for (let i = 0; i < 44; i++) {              // fixed count: same answer every call
+        const mid = (lo + hi) / 2;
+        if (ringFits(mid, ctx)) lo = mid; else hi = mid;
+      }
+    }
+    const size = lo;
+    const r = ringFits(size, ctx) || Math.max(vmin * 0.11, orb / 2 + size / 2 + 18);
+    return { cx: vw / 2, cy: cy, r: r, size: size, orb: orb, vmin: vmin, bandH: bandH };
+  }
+
+  function ringGeom(total) {
+    const cur = currentLayout();
+    const vmin = Math.min(window.innerWidth, window.innerHeight);
+    if (PAGE[cur].mode !== 'hub') {
+      const wantOrb = vmin * orbVmin(cur);
+      return { cx: window.innerWidth / 2, cy: orbTopPx(cur), r: wantOrb * 1.6, size: vmin * 0.13, orb: wantOrb, vmin: vmin };
+    }
+    return solveRing(total, hubBand());
+  }
+
+  function renderAppRing() {
+    const ring = document.getElementById('app-ring');
+    if (!ring) return;
+    ring.innerHTML = '';
+    if (PAGE[currentLayout()].mode !== 'hub') return;   // leaf pages have no ring
+    // home carries no ring: it lays itself out (big orb + pill + today's card) instead
+    if (currentLayout() === 'home') { layoutHome(); return; }
+    const items = ringButtons(currentLayout());
+    const total = items.length;
+    if (!total) return;
+
+    const g = ringGeom(total);
+    if (orbApi) {
+      const now = document.getElementById('orb').width;
+      if (Math.abs(now - g.orb) > 2) orbApi.setSize(g.orb);
+      orbApi.setTop(Math.round(g.cy));
+    }
+
+    items.forEach((app, i) => {
+      const ang = (-90 + (i * 360) / total) * Math.PI / 180;   // 12 o'clock first
+      const btn = document.createElement('button');
+      btn.className = 'app-btn';
+      btn.type = 'button';
+      btn.style.width = Math.round(g.size) + 'px';
+      btn.style.height = Math.round(g.size) + 'px';
+      btn.style.left = Math.round(g.cx + g.r * Math.cos(ang)) + 'px';
+      btn.style.top = Math.round(g.cy + g.r * Math.sin(ang)) + 'px';
+      const lab = document.createElement('span');
+      lab.className = 'app-btn-label';
+      lab.textContent = app.label;
+      btn.appendChild(lab);
+      const st = ringStatus(app.id);
+      if (st) {
+        const sub = document.createElement('span');
+        sub.className = 'app-btn-sub';
+        sub.textContent = st;
+        btn.appendChild(sub);
+      }
+      btn.title = app.label + (st ? ' — ' + st : '');
+      btn.addEventListener('click', () => app.fn && app.fn());
+      ring.appendChild(btn);
+      fitLabel(lab, btn, g.size);
+    });
+  }
+
+  // Shrink a label until it fits its button, whatever the word length. This is what
+  // lets SUPERVISING and MUSIC share one button size without either overflowing.
+  function fitLabel(lab, btn, size) {
+    let fs = Math.max(11, Math.min(size * 0.30, (size * 0.86) / Math.max(4, lab.textContent.length) * 1.55));
+    lab.style.fontSize = fs.toFixed(1) + 'px';
+    const avail = size - 18;
+    for (let i = 0; i < 30; i++) {
+      if (lab.scrollWidth <= avail && lab.scrollHeight <= avail) break;
+      fs *= 0.93;
+      if (fs < 8.5) break;
+      lab.style.fontSize = fs.toFixed(1) + 'px';
+    }
+  }
+
+  // Live status strip: fills the hub buttons with something worth reading.
+  // Defined before the ring so nothing depends on hoisting quirks; each producer is
+  // best-effort and a failed fetch just leaves that button plain.
+  //
+  // Home has no ring and is the only page, so there is nothing to fill yet — no point
+  // polling :2008 every minute for buttons that do not exist. Each rebuilt page adds
+  // its own producer back here (kanban -> open task count, schedule -> next event...).
+  const RING_STATUS = {};
+  function setRingStatus(id, text) {
+    if (RING_STATUS[id] === text) return;
+    RING_STATUS[id] = text;
+    if (PAGE[currentLayout()].mode === 'hub') renderAppRing();
+  }
+
+  renderAppRing();
+
+  // ================= home: today's schedule + big-orb layout =================
+  // Home is a hub but has NO ring (user's spec): clock/date on top, the Spotify pill
+  // under it, one big orb in the middle, today's schedule in a wide card underneath.
+  // Placement is measured against the live page (clock height, pill height, viewport)
+  // so nothing can overlap at any window size — never a hardcoded centre.
+  // Home shows no schedule list: the agenda line under the clock (#c-agenda /
+  // #c-agenda-time, written by refreshAgenda) is home's only schedule readout, and with
+  // no card to size the orb against there is nothing else here to fetch.
+
+  // Measure the live page and place pill and orb. With no card on home the orb takes the
+  // whole space below the pill, so it is as large as the mirror allows.
+  function homeGeom() {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const vmin = Math.min(vw, vh);
+    const clock = document.getElementById('clockbox');
+    const pill = document.getElementById('spotify-pill');
+    // Measure SETTLED geometry: #clockbox and #spotify-pill carry the .anim transition,
+    // so straight after a page change they still report the position they are travelling
+    // FROM (a leaf page parks the clock in the top-left corner) — which would place the
+    // pill and the orb too high. Killing the transition resolves them to their final spot.
+    const saved = [];
+    [clock, pill].forEach(function (el) {
+      if (el) { saved.push([el, el.style.transition]); el.style.transition = 'none'; }
+    });
+    const cr = clock ? clock.getBoundingClientRect() : { top: vh * 0.02, bottom: vh * 0.16 };
+    const pr = pill ? pill.getBoundingClientRect() : { height: vmin * 0.09 };
+    saved.forEach(function (s) { s[0].style.transition = s[1]; });
+
+    const clockTop = cr.top || 0;
+    const pillH = pr.height || vmin * 0.09;
+    const gap = Math.max(10, vmin * 0.02);
+
+    const pillTop = Math.max(cr.bottom + gap, clockTop + vmin * 0.14);
+    const pillBottom = pillTop + pillH;
+
+    // the orb has the rest of the screen down to a small bottom margin
+    const orbTop = pillBottom + gap;
+    const orbBottom = vh - gap - vmin * 0.04;      // small breathing room under the orb
+    const orbSize = Math.max(vmin * 0.22,
+      Math.min(vmin * 0.70, orbBottom - orbTop, vw * 0.56));
+    return {
+      vw: vw, vh: vh, vmin: vmin, pillTop: pillTop, pillBottom: pillBottom,
+      orbCy: (orbTop + orbBottom) / 2, orbSize: orbSize
+    };
+  }
+
+  function layoutHome() {
+    const g = homeGeom();
+    // In voice mode the panel owns the right half: tuck the orb left and shrink it.
+    // This lives here (not in applyVoiceLayout) because renderAppRing() also calls
+    // layoutHome() on home — two places sizing the orb would fight each other.
+    const shrink = (typeof voicePanelOpen !== 'undefined') && voicePanelOpen;
+    const size = shrink ? Math.min(g.orbSize, g.vmin * 0.22) : g.orbSize;
+    const cy = shrink ? g.vh * 0.5 : g.orbCy;
+    const pill = document.getElementById('spotify-pill');
+    if (pill) pill.style.top = Math.round(g.pillTop) + 'px';
+    if (orbApi) {
+      orbApi.setSize(size);
+      orbApi.setTop(cy);
+    }
+    const wrap = document.getElementById('orbwrap');
+    if (wrap) {
+      wrap.style.width = Math.round(size) + 'px';
+      wrap.style.height = Math.round(size) + 'px';
+      wrap.style.left = shrink ? '22vw' : '50%';
+      wrap.style.top = Math.round(cy) + 'px';
+    }
+    const glow = document.getElementById('orb-glow');
+    if (glow) {
+      glow.style.width = Math.round(size * 1.38) + 'px';
+      glow.style.height = Math.round(size * 1.38) + 'px';
+    }
+  }
+  window.layoutHome = layoutHome;
+  // ================= voice chat (wake word + Space) =================
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const recog = SpeechRec ? new SpeechRec() : null;
+  if (recog) { recog.continuous = true; recog.interimResults = true; recog.lang = 'en-AU'; }
+  let voiceBusy = false;
+  // NB: `var`, not `let` — layoutHome() (called by renderAppRing during this script's own
+  // execution) reads it, and a `let` here would still be in its temporal dead zone:
+  // `typeof x` does NOT protect against TDZ, it throws.
+  var voicePanelOpen = false;          // whether the voice-chat transcript panel is open on home
+
+  function openVoicePanel() {
+    voicePanelOpen = true;
+    document.body.classList.add('vc-open');
+    applyVoiceLayout();
+    if (currentLayout() === 'home') layoutHome();   // one place sizes the home orb
+  }
+  function closeVoicePanel() {
+    if (!voicePanelOpen && !document.body.classList.contains('vc-open')) return;
+    voicePanelOpen = false;
+    document.body.classList.remove('vc-open');
+    applyVoiceLayout();
+    if (currentLayout() === 'home') layoutHome();
+  }
+  // Voice mode works on ANY page now, not just home: the panel takes the right half
+  // and everything else steps aside (CSS: body.hub.vc-open / body.vc-open).
+  function applyVoiceLayout() {
+    const cur = currentLayout();
+    if (!orbApi) return;
+    const v = Math.min(window.innerWidth, window.innerHeight);
+    if (PAGE[cur].mode === 'hub') {
+      if (cur === 'home') {
+        // home has no ring: shrink the big orb into the left gap while the panel is up
+        const g = homeGeom();
+        orbApi.setSize(voicePanelOpen ? Math.min(g.orbSize, g.vmin * 0.22) : g.orbSize);
+        orbApi.setTop(voicePanelOpen ? g.vh * 0.5 : g.orbCy);
+        const wrap = document.getElementById('orbwrap');
+        if (wrap) { wrap.style.left = voicePanelOpen ? '22vw' : '50%'; }
+      } else {
+        orbApi.setSize(v * (voicePanelOpen ? 0.22 : orbVmin(cur)));
+        orbApi.setTop(voicePanelOpen ? window.innerHeight * 0.5 : orbTopPx(cur));
+      }
+    }
+    renderAppRing();
+  }
+
+  function vcAppend(cls, text) {
+    const box = document.getElementById('vc-scroll');
+    if (!box) return;
+    const el = document.createElement('div');
+    el.className = 'chat-msg ' + cls;
+    el.textContent = text || '';
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
+  }
+  function vcClear() { const box = document.getElementById('vc-scroll'); if (box) box.innerHTML = ''; }
+  // vcClear kept for debugging via console: vcClear() empties the transcript
+
+  function sendVoice(text) {
+    if (voiceBusy) return;
+    const v = (text || '').trim();
+    if (!v) return;
+    voiceBusy = true; orbState('thinking');
+    vcAppend('you', v);
+    // abort if the backend hangs (keeps wake word alive)
+    const abort = new AbortController();
+    const kill = setTimeout(() => abort.abort(), 45000);
+    fetch('http://localhost:2009/api/a2ui/send', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: v, session_id: 'voice-' + location.port }), signal: abort.signal })
+      .then(r => r.json())
+      .then(d => {
+        clearTimeout(kill);
+        if (d.ok) {
+          orbState('idle');
+          const clean = (d.reply || '').replace(/\[\[\s*SHOW\s+[^\]]*\]\]/gi, '').trim();
+          vcAppend('bot', clean);
+          speak(clean);
+          if (d.show) {
+            // navigating — close the voice panel and switch to the requested page
+            stopVoice(); closeVoicePanel();
+            showLayout(d.show);
+          }
+        } else { orbState('error'); vcAppend('err', d.error || 'Error'); }
+      })
+      .catch(() => { orbState('error'); vcAppend('err', 'Backend unreachable on :2009'); })
+      .then(() => { voiceBusy = false; });
+  }
+
+  let ttsPause = false;                // echo guard: true while the mirror is talking
+  function speak(text) {
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{23F0}-\u{23FF}\u{2B00}-\u{2BFF}]/gu, ''));
+      u.lang = 'en-AU';
+      // echo guard: pause recognition while the mirror talks so the mic
+      // doesn't transcribe its own voice and loop it back as a command
+      u.onstart = () => { ttsPause = true; try { recog && recog.abort(); } catch (err) {} };
+      u.onend = () => {
+        ttsPause = false;
+        setTimeout(() => { if (recog && !recog._on) { try { recog.start(); } catch (err) {} } }, 300);
+      };
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  function startListen() {
+    if (!recog || recog._on) return;
+    recog._on = true;
+    try { recog.start(); } catch (e) {}
+  }
+
+  // ── typed input ─────────────────────────────────────────────────────
+  // Same brain, no microphone. Enter sends, Escape leaves the field (and the
+  // window-level Escape then back-steps a level).
+  (function wireVoiceInput() {
+    const inp = document.getElementById('vc-input');
+    const btn = document.getElementById('vc-send');
+    if (!inp || !btn) return;
+    function submit() {
+      const v = inp.value.trim();
+      if (!v) return;
+      inp.value = '';
+      openVoicePanel();
+      sendVoice(v);
+    }
+    btn.addEventListener('click', submit);
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      else if (e.key === 'Escape') { inp.blur(); }
+    });
+  })();
+
+  // ── wake word state machine ─────────────────────────────────────────
+  // standby: always listening, waiting for "jarvis" or "padawan" to activate.
+  // active:   panel open, every phrase is sent to the assistant; "stop" /
+  //           "sleep" / "goodbye" (or Space) returns to standby.
+  let active = false;
+  const WAKE = /\b(jarvis|padawan)\b/i;
+  const DEACTIVATE = /\b(stop|sleep|goodbye|quiet|go to sleep)\b/i;
+
+  function activate() {
+    active = true;
+    openVoicePanel();
+    orbState('listening');
+    if (typeof speak === 'function') speak("Yes?");
+  }
+  function deactivate() {
+    active = false;
+    shownText = '';
+    closeVoicePanel();
+    orbState('idle');
+  }
+
+  let shownText = '';
+  if (recog) {
+    recog.onresult = function (e) {
+      // collect final transcripts from this event
+      let phrase = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) phrase += (e.results[i][0].transcript || '');
+      }
+      const t = phrase.trim();
+      if (!t) return;
+
+      // deactivation (only when active)
+      if (active && DEACTIVATE.test(t)) { deactivate(); return; }
+
+      // strip wake word if present (works in both states)
+      let command = t;
+      const wm = t.match(WAKE);
+      const woke = wm && !active;
+      if (wm) {
+        command = t.replace(WAKE, '').trim()
+          .replace(/^(hey|ok|okay|oi|yo|hi|hello)\b[,\s]*/i, '').trim()
+          .replace(/^[,\s]+|[,\s]+$/g, '');
+      }
+
+      if (woke) {
+        // first wake: open the speech page; send a command only if one came attached
+        activate();
+        if (command && command.length > 2) sendVoice(command);
+        return;
+      }
+
+      // active mode: send the phrase (wake word stripped if it rode along)
+      if (active) {
+        if (command && command.length > 1 && command !== shownText) { shownText = command; sendVoice(command); }
+        return;
+      }
+
+      // standby: ignore non-wake speech
+    };
+    recog.onend = function () {
+      recog._on = false;
+      // keep always-on standby listening (mirror is persistent);
+      // hold off while TTS is speaking (echo guard) or the tab is hidden
+      setTimeout(function () {
+        if (!document.hidden && !ttsPause && recog && !recog._on) {
+          try { recog.start(); } catch (err) {}
+        }
+      }, 200);
+    };
+    recog.onerror = function (e) {
+      recog._on = false;
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        orbState('error');
+        return;
+      }
+      // transient error -> resume standby listening (unless TTS is talking)
+      setTimeout(function () {
+        if (!ttsPause && recog && !recog._on) { try { recog.start(); } catch (err) {} }
+      }, 300);
+    };
+    // start standby listening on load (browser will ask once for mic permission)
+    startListen();
+  }
+
+  // Space toggles active<->standby voice chat.
+  window.addEventListener('keydown', function (e) {
+    if (e.target !== document.body) return;
+    if (e.code !== 'Space' || e.repeat) return;
+    // the player owns the screen while it is up — Space must not wake the mic behind it
+    if (spPlayerOpen) return;
+    e.preventDefault();
+    if (active) { stopVoice(); deactivate(); }
+    else { activate(); }
+  });
+
+  function stopVoice() {
+    shownText = '';
+    orbState('idle');
+  }
+// ================= boot =================
+// Bring the mirror up on home. There is only one page while the site is being
+// rebuilt, so anything in the URL or localStorage that is not home simply lands on
+// home — a stale #schedule from the old site must not strand a blank screen.
+(function boot() {
+  function start() {
+    showLayout('home');
+    setTimeout(relayout, 320);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+
+  // remember the page across reloads (the mirror is left running for days)
+  var _showLayout = showLayout;
+  showLayout = function (l) {
+    _showLayout(l);
+    try { localStorage.setItem('padawan.layout', canonicalLayout(l)); } catch (e) {}
+  };
+  window.addEventListener('hashchange', function () {
+    showLayout(canonicalLayout(location.hash.replace(/^#/, '')));
+  });
+})();
+</script>
+</body>
+</html>
