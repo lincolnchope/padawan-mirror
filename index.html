@@ -2563,7 +2563,11 @@
       Math.min(vmin * 0.70, orbBottom - orbTop, vw * 0.56));
     return {
       vw: vw, vh: vh, vmin: vmin, pillTop: pillTop, pillBottom: pillBottom,
-      orbCy: (orbTop + orbBottom) / 2, orbSize: orbSize, arrowStrip: arrowStrip
+      orbCy: (orbTop + orbBottom) / 2, orbSize: orbSize, arrowStrip: arrowStrip,
+      // the vertical middle of the top block (clock + pill). The parked orb lines up
+      // with this so the top row reads as one band instead of two unrelated things.
+      clockTop: clockTop,
+      topMid: (clockTop + pillBottom) / 2,
     };
   }
 
@@ -2584,17 +2588,20 @@
 
     if (expanded) {
       // ---- orb parked top-right, small ----
+      // Two alignments the user asked for:
+      //   * the orb's CENTRE sits on the vertical middle of the clock+pill block, so the
+      //     top row reads as one band
+      //   * the orb is the rightmost thing, with the same margin the pill uses
       const size = Math.min(g.vmin * 0.22, g.vw * 0.2);
       const rightMargin = Math.max(26, g.vmin * 0.03);
-      const topPx = Math.max(g.vh * 0.07, g.vmin * 0.07);
+      const cy = g.topMid;                          // lined up with the top block
       const cx = g.vw - rightMargin - size / 2;     // orb centre, measured from the right
-      // the pill and clock stay put; only the orb and its glow move
-      if (orbApi) { orbApi.setSize(size); orbApi.setTop(topPx + size / 2); }
+      if (orbApi) { orbApi.setSize(size); orbApi.setTop(cy); }
       if (wrap) {
         wrap.style.width = Math.round(size) + 'px';
         wrap.style.height = Math.round(size) + 'px';
         wrap.style.left = Math.round(cx) + 'px';
-        wrap.style.top = Math.round(topPx + size / 2) + 'px';
+        wrap.style.top = Math.round(cy) + 'px';
       }
       const glow = document.getElementById('orb-glow');
       if (glow) {
@@ -2604,16 +2611,21 @@
       if (arrowEl) {
         // arrow tucks directly under the parked orb, same x
         arrowEl.style.left = Math.round(cx) + 'px';
-        arrowEl.style.top = Math.round(topPx + size + 40) + 'px';
+        arrowEl.style.top = Math.round(cy + size / 2 + 40) + 'px';
       }
       if (winEl) {
-        // the window occupies the band the orb used to sit in, clear of the corner orb
-        // AND its arrow, so nothing overlaps
-        const winTop = Math.max(g.pillBottom + 14, topPx + size + 40 + 32 + 14);
-        const winH = Math.max(240, (g.vh - 24) - winTop);
-        const winW = Math.min(g.vw * 0.86, g.vw - rightMargin - size - 60);
-        winEl.style.left = Math.round(Math.max(winW / 2 + 24, (g.vw - size - rightMargin) / 2)) + 'px';
-        winEl.style.top = Math.round(winTop + winH / 2) + 'px';
+        // The window is CENTRED on the viewport axis (same as the clock and pill above it)
+        // and centred vertically in the space below the orb/arrow. It is capped short of
+        // the full band so the centring is visible as an even gap above and below, rather
+        // than the window hugging the top with all the slack at the bottom.
+        const bandTop = Math.max(g.pillBottom + 14, cy + size / 2 + 40 + 32 + 14);
+        const bandBot = g.vh - 24;
+        const bandH = Math.max(240, bandBot - bandTop);
+        const winH = Math.min(bandH, 660);                 // capped so the gap is even
+        const orbColumn = rightMargin + size;              // width the corner orb occupies
+        const winW = Math.min(g.vw * 0.86, g.vw - orbColumn - 40);
+        winEl.style.left = Math.round(g.vw / 2) + 'px';    // centred on the viewport
+        winEl.style.top = Math.round(bandTop + bandH / 2) + 'px';
         winEl.style.width = Math.round(winW) + 'px';
         winEl.style.height = Math.round(winH) + 'px';
       }
@@ -2715,6 +2727,55 @@
       wheelLock = now + 700;
       hwSet(e.deltaY < 0);
     }, { passive: true });
+
+    // ---- mouse / trackpad DRAG ----
+    // Press on the home background and drag up or down, the same gesture a touch screen
+    // uses. Only starts on a non-interactive target so it cannot steal a click from the
+    // orb, the pill or any control.
+    let dragY = null, dragX = null, dragMoved = false;
+    const DRAG_THRESH = 70, DRAG_SLOP = 60;
+    window.addEventListener('mousedown', function (e) {
+      if (!document.body.classList.contains('home')) return;
+      if (e.button !== 0) return;
+      if (vcOpenLike()) return;
+      const t = e.target;
+      if (t && t.closest && t.closest('button, input, textarea, a, #sp-player, #sc-window, #vc-panel, #hw-window')) return;
+      dragY = e.clientY; dragX = e.clientX; dragMoved = false;
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (dragY === null) return;
+      if (Math.abs(e.clientY - dragY) > 4 || Math.abs(e.clientX - dragX) > 4) dragMoved = true;
+    });
+    window.addEventListener('mouseup', function (e) {
+      if (dragY === null) return;
+      const dy = e.clientY - dragY, dx = e.clientX - dragX;
+      dragY = null; dragX = null;
+      if (!document.body.classList.contains('home')) return;
+      if (!dragMoved) return;                              // a click, not a drag
+      if (Math.abs(dx) > DRAG_SLOP || Math.abs(dy) < DRAG_THRESH) return;
+      if (dy < 0) hwSet(true);                            // dragged up -> expand
+      else hwSet(false);                                  // dragged down -> collapse
+    });
+
+    // ---- keyboard ----
+    // Up arrow (or PageUp) expands, Down arrow (or PageDown) collapses. Arrow keys are
+    // only claimed when there is nothing to scroll and no window is taking input, so they
+    // still work normally inside the schedule and Spotify windows.
+    window.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown' &&
+          e.key !== 'PageUp' && e.key !== 'PageDown') return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!document.body.classList.contains('home')) return;
+      if (vcOpenLike()) return;
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      // inside a scrollable window, leave the arrows to the scroll
+      if (t && t.closest && t.closest('#sp-player, #sc-window, #vc-panel')) return;
+      e.preventDefault();
+      const up = (e.key === 'ArrowUp' || e.key === 'PageUp');
+      hwSet(up);
+    });
+
     function vcOpenLike() {
       return (typeof voicePanelOpen !== 'undefined' && voicePanelOpen) ||
              (typeof spPlayerOpen !== 'undefined' && spPlayerOpen) ||
